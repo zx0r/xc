@@ -32,7 +32,10 @@ pub enum QueryMode<'a> {
     Fuzzy(&'a str),     // default
 }
 
-#[allow(clippy::option_if_let_else)]
+#[allow(
+    clippy::option_if_let_else,
+    reason = "Explicit if-let branching provides clearer parser control flow"
+)]
 fn parse_query(q: &str) -> QueryMode<'_> {
     let t = q.trim();
     if t.is_empty() {
@@ -82,7 +85,6 @@ impl SearchResult<'_> {
 
 // ── Search Chunk Engine ──────────────────────────────────────────
 
-#[allow(clippy::cast_possible_truncation)]
 fn search_chunk(
     arena: &Arena,
     indices: &[u32],
@@ -148,7 +150,6 @@ fn search_chunk(
 
 // ── Search Execution (Sequential / Parallel) ─────────────────────
 
-#[allow(clippy::cast_possible_truncation)]
 fn search_sequential<'a>(
     arena: &'a Arena,
     indices: &'a [u32],
@@ -165,7 +166,6 @@ fn search_sequential<'a>(
     }
 }
 
-#[allow(clippy::cast_possible_truncation)]
 fn search_parallel<'a>(
     arena: &'a Arena,
     indices: &'a [u32],
@@ -207,7 +207,6 @@ fn search_parallel<'a>(
 /// Zero-copy: borrows `indices` slice from `Arena` for empty queries.
 /// Returns owned/borrowed `SearchResult` (`Cow<'a, [u32]>` of indices).
 #[must_use]
-#[allow(clippy::cast_possible_truncation)]
 pub fn search<'a>(arena: &'a Arena, query: &str, scope: Scope) -> SearchResult<'a> {
     let indices = arena.scope_indices(scope);
     if indices.is_empty() {
@@ -367,6 +366,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn search_unbounded_real_matches() {
         let mut lines = Vec::new();
         let owned: Vec<String> = (0..2500)

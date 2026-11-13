@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2026-11-13
+
+### Changed
+- Upgraded compiler toolchain and CI matrix to Rust 1.99.0 with strict edition 2024 compliance.
+- Refactored CLI output pipeline from unbounded standard formatting macros (`println!`/`eprintln!`) to direct locked zero-copy I/O streaming (`std::io::stdout().lock().write_all`).
+- Enforced strict `allow_attributes_without_reason = "deny"` across all crates, benchmarks, and integration test suites.
+- Modernized POSIX signal handling C ABI symbol definitions to `*const core::ffi::c_void`.
+
 ## [0.1.6] - 2026-10-31
 
 ### Fixed
@@ -57,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Seamless Bash, Zsh, and Fish shell hooks for transparent execution time and exit code tracking.
 - Cross-platform distribution pipeline powered by `cargo-dist` with Homebrew tap integration.
 
+[0.1.7]: https://github.com/zx0r/xstory/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/zx0r/xstory/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/zx0r/xstory/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/zx0r/xstory/compare/v0.1.3...v0.1.4

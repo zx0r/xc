@@ -106,7 +106,6 @@ fn mask_command(cmd: &str, config: &Config) -> String {
 ///
 /// # Errors
 /// Returns `Error::Io` if writing to the history file fails.
-#[allow(clippy::cast_possible_wrap)]
 pub fn record(
     cmd_parts: &[String],
     exit_code: i32,
@@ -134,7 +133,7 @@ pub fn record(
 ///
 /// # Errors
 /// Returns `Error::Io` if writing to the specified path fails.
-#[allow(dead_code, clippy::cast_possible_wrap)]
+#[allow(dead_code, reason = "Exported for testing and library integration")]
 pub fn record_to_path(
     cmd_parts: &[String],
     exit_code: i32,
@@ -511,7 +510,10 @@ fn open_target_append(target_path: &Path) -> std::io::Result<BufWriter<std::fs::
 ///
 /// # Errors
 /// Returns `Error::Io` or `Error::InvalidArgs` on failure.
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "Sequential parser pipeline for multiple shell history formats"
+)]
 pub fn import_history_to_path(
     in_path: Option<&str>,
     config: &Config,
@@ -868,7 +870,7 @@ mod tests {
         .expect("record");
 
         let content = std::fs::read_to_string(&path).expect("read");
-        assert!(!content.is_empty());
+        assert_ne!(content.as_str(), "");
         // Verify TSV has 5 tab-separated fields
         let line = content.trim();
         let fields: Vec<&str> = line.split('\t').collect();

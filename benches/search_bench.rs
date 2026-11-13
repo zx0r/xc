@@ -1,4 +1,7 @@
-#![allow(clippy::expect_used)]
+#![allow(
+    clippy::expect_used,
+    reason = "Criterion benchmark setup panics on harness failure"
+)]
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use std::hint::black_box;
@@ -9,7 +12,6 @@ use xstory::search::search;
 
 const BENCH_ENTRY_COUNT: usize = 100_000;
 
-#[allow(clippy::cast_possible_wrap, clippy::cast_possible_truncation)]
 fn generate_history_tsv(path: &Path, count: usize) -> u64 {
     let mut file = std::fs::File::create(path).expect("create bench tsv");
     let commands = [

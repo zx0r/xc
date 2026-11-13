@@ -197,7 +197,6 @@ impl<'a> Dashboard<'a> {
         self.selected = if delta < 0 {
             self.selected.saturating_sub(delta.unsigned_abs())
         } else {
-            #[allow(clippy::cast_sign_loss)]
             self.selected.saturating_add(delta as usize).min(max_idx)
         };
         self.preview_scroll = 0;
@@ -235,7 +234,6 @@ impl<'a> Dashboard<'a> {
         self.preview_scroll = if delta < 0 {
             self.preview_scroll.saturating_sub(delta.unsigned_abs())
         } else {
-            #[allow(clippy::cast_sign_loss)]
             self.preview_scroll
                 .saturating_add(delta as usize)
                 .min(max_lines.saturating_sub(1))
@@ -362,7 +360,6 @@ const MONTHS: [&str; 12] = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 #[must_use]
 pub fn format_timestamp(timestamp_ms: i64) -> String {
     if timestamp_ms <= 0 {
@@ -681,7 +678,10 @@ fn apply_utf8_match_overlay(
     });
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "Syntax token overlay and search highlight merger algorithm"
+)]
 fn build_highlighted_spans<'a>(
     cmd: &'a str,
     spans: &[syntax::Span],
@@ -817,7 +817,11 @@ fn build_highlighted_spans<'a>(
 }
 
 /// Render a single TUI frame to the ratatui Frame.
-#[allow(clippy::too_many_lines, clippy::similar_names)]
+#[allow(
+    clippy::too_many_lines,
+    clippy::similar_names,
+    reason = "Master terminal frame composition and component layout"
+)]
 pub fn render_frame(
     f: &mut Frame<'_>,
     dash: &Dashboard<'_>,
@@ -942,9 +946,7 @@ pub fn render_frame(
         count_wrapped_rows(arena.cmd_str(idx), p_inner.width)
     });
 
-    #[allow(clippy::cast_possible_truncation)]
     let max_scroll = (visual_rows as u16).saturating_sub(p_inner.height);
-    #[allow(clippy::cast_possible_truncation)]
     let p_scroll = (dash.preview_scroll as u16).min(max_scroll);
 
     if visual_rows > p_inner.height as usize {
@@ -981,7 +983,6 @@ pub fn render_frame(
     };
     f.render_widget(Paragraph::new(line).block(query_block), layout.query);
 
-    #[allow(clippy::cast_possible_truncation)]
     let cursor_offset = if dash.query.is_empty() {
         2
     } else {
@@ -998,7 +999,10 @@ pub fn render_frame(
 ///
 /// # Errors
 /// Returns `Error::Io` on terminal manipulation or event read failure.
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "Main interactive TUI loop handling raw terminal input and rendering"
+)]
 pub fn run_tui(
     arena: &Arena,
     config: &Config,
@@ -1178,7 +1182,11 @@ pub fn run_tui(
 // ── Tests ────────────────────────────────────────────────────────
 
 #[cfg(all(test, not(miri)))]
-#[allow(clippy::expect_used, clippy::panic)]
+#[allow(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "TUI test harness invariants"
+)]
 mod tests {
     use super::*;
 
@@ -1482,7 +1490,7 @@ mod tests {
 
         // 1. Without query (e.g. preview pane): pure syntax highlighting, no yellow match overlay
         let spans_no_query = build_highlighted_spans(cmd, spans_syntax, Theme::Dark, None);
-        assert!(!spans_no_query.is_empty());
+        assert_ne!(spans_no_query.as_slice(), &[]);
         for span in &spans_no_query {
             assert_ne!(
                 span.style,

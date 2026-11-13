@@ -1,15 +1,15 @@
 #![allow(
     clippy::expect_used,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::cast_precision_loss,
+    clippy::print_stdout,
+    clippy::print_stderr,
     clippy::too_many_lines,
     clippy::similar_names,
     clippy::struct_excessive_bools,
     clippy::collapsible_if,
-    clippy::map_unwrap_or,
     clippy::ref_option,
-    clippy::cast_lossless
+    clippy::map_unwrap_or,
+    clippy::cast_lossless,
+    reason = "Comparative benchmark reporting and assertion harness"
 )]
 
 //! Comparative Benchmark & Stress Test: xstory vs. Atuin
@@ -182,7 +182,10 @@ struct ScaleConfig {
     cache_tier: &'static str,
 }
 
-#[allow(dead_code)]
+#[allow(
+    dead_code,
+    reason = "Benchmark statistics struct fields used in comparative assertions and formatting"
+)]
 #[derive(Clone, Debug)]
 struct Stats {
     min: Duration,

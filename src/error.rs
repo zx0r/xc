@@ -2,7 +2,7 @@ use std::fmt;
 
 /// Single error type for the entire crate.
 /// No traits, no macros, no error crates.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "Comprehensive domain error variants")]
 pub enum Error {
     Io(std::io::Error),
     TerminalQuery,
@@ -33,7 +33,7 @@ impl From<std::io::Error> for Error {
 
 impl Error {
     #[must_use]
-    #[allow(clippy::unused_self)]
+    #[allow(clippy::unused_self, reason = "Uniform error instance method contract")]
     pub const fn exit_code(&self) -> i32 {
         1
     }

@@ -1,4 +1,8 @@
-#![allow(dead_code, unsafe_code)]
+#![allow(
+    dead_code,
+    unsafe_code,
+    reason = "Internal arena layout primitives and zero-copy unsafe memory mapping"
+)]
 
 use std::collections::{HashMap as StdMap, HashSet as StdSet};
 use std::hash::{BuildHasherDefault, Hasher};
@@ -229,7 +233,10 @@ fn parse_i32(s: &[u8]) -> Option<i32> {
 
 // ── ByteView construction ────────────────────────────────────────
 
-#[allow(clippy::cast_possible_truncation)]
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "ByteView length fits in u32"
+)]
 fn make_byteview(s: &[u8], buf_id: u32, offset: u32) -> ByteView {
     let mut bv = ByteView {
         len: s.len() as u32,
@@ -249,7 +256,11 @@ fn make_byteview(s: &[u8], buf_id: u32, offset: u32) -> ByteView {
     bv
 }
 
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "Memory mapped slice offset is positive and fits in u32"
+)]
 fn byteview_raw(s: &[u8], mmap_base: *const u8) -> ByteView {
     let offset = if s.len() > 12 {
         // SAFETY: `s` is a subslice of the memory-mapped buffer starting at `mmap_base`.
@@ -297,7 +308,6 @@ fn has_escapes(s: &[u8]) -> bool {
     find_byte(b'\\', s).is_some()
 }
 
-#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn unescape_into(s: &[u8], buf: &mut Vec<u8>) -> (u32, usize) {
     let start = buf.len() as u32;
     let mut i = 0;
@@ -343,7 +353,10 @@ impl Arena {
     ///
     /// # Errors
     /// Returns `Error::Io` if opening or mapping the file fails.
-    #[allow(clippy::similar_names, clippy::cast_possible_truncation)]
+    #[allow(
+        clippy::similar_names,
+        reason = "Arena field names and local buffers share standard naming conventions"
+    )]
     pub fn load(path: &Path, local_cwd: Option<&str>) -> Result<Self, crate::error::Error> {
         let mut arena = Self {
             mmap: None,
@@ -483,7 +496,6 @@ impl Arena {
         let mut local_buf: Vec<u32> = Vec::with_capacity(n / 4);
 
         for raw_idx in (0..n).rev() {
-            #[allow(clippy::cast_possible_truncation)]
             let idx = raw_idx as u32;
             let cmd = self.cmd_bytes(idx);
             let h = fnv1a(cmd);
@@ -676,7 +688,8 @@ impl Config {
 #[allow(
     clippy::undocumented_unsafe_blocks,
     clippy::multiple_unsafe_ops_per_block,
-    clippy::disallowed_methods
+    clippy::disallowed_methods,
+    reason = "Test harness tests low-level byte layout and memory mapping"
 )]
 mod tests {
     use super::*;
@@ -731,7 +744,7 @@ mod tests {
     fn missing_file_empty_arena() {
         let arena = Arena::load(Path::new("/nonexistent/xstory_test_no_file"), None).expect("load");
         assert!(arena.is_empty());
-        assert!(arena.global_indices.is_empty());
+        assert_eq!(arena.global_indices.as_slice(), &[]);
     }
 
     #[test]

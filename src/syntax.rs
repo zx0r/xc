@@ -47,7 +47,6 @@ impl<const N: usize> AstCache<N> {
         Self { slots }
     }
 
-    #[allow(clippy::cast_possible_truncation)]
     pub fn get_or_parse<'a>(&'a mut self, cmd: &str) -> &'a [Span] {
         if cmd.is_empty() {
             return &[];
@@ -83,7 +82,10 @@ thread_local! {
     static BASH_PARSER: RefCell<Parser> = RefCell::new({
         let mut p = Parser::new();
         let lang = tree_sitter_bash::LANGUAGE;
-        #[allow(clippy::expect_used)]
+        #[allow(
+            clippy::expect_used,
+            reason = "Tree-sitter static grammar initialization invariant"
+        )]
         p.set_language(&lang.into()).expect("valid bash grammar");
         p
     });
@@ -91,7 +93,6 @@ thread_local! {
 
 // ── AST Traversal & Mapping ──────────────────────────────────────
 
-#[allow(clippy::cast_possible_truncation)]
 fn collect_spans(node: Node<'_>, cmd: &[u8], spans: &mut Vec<Span>) {
     let (sb, eb) = (node.start_byte(), node.end_byte());
     if sb >= eb || eb > u16::MAX as usize {
@@ -151,7 +152,10 @@ pub fn preview<'a>(cache: &'a mut PreviewCache, cmd: &str) -> &'a [Span] {
 
 /// Map `TokenKind` to ANSI color based on `Theme`.
 #[must_use]
-#[allow(clippy::match_same_arms)]
+#[allow(
+    clippy::match_same_arms,
+    reason = "Explicit theme and token pairing matrix"
+)]
 pub fn style_for(kind: TokenKind, theme: Theme) -> Style {
     let (c, m) = match (theme, kind) {
         (Theme::Dark, TokenKind::Command) => (Color::Indexed(109), Modifier::BOLD),
@@ -210,7 +214,11 @@ pub fn style_for(kind: TokenKind, theme: Theme) -> Style {
 // ── Tests ────────────────────────────────────────────────────────
 
 #[cfg(all(test, not(miri)))]
-#[allow(clippy::expect_used, clippy::panic)]
+#[allow(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "Syntax highlighting unit tests invariants"
+)]
 mod tests {
     use super::*;
 
@@ -269,7 +277,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::cast_possible_truncation)]
     fn cache_hit_no_reparse() {
         let mut cache = TokenCache::new();
         let cmd = "echo test";
@@ -280,7 +287,7 @@ mod tests {
         };
         let slot = (h as usize) & (2048 - 1);
         assert_eq!(cache.slots[slot].0, h);
-        assert!(!cache.slots[slot].1.is_empty());
+        assert_ne!(cache.slots[slot].1.as_slice(), &[]);
 
         // Mutate the cached span to Comment
         cache.slots[slot].1[0].kind = TokenKind::Comment;
@@ -295,7 +302,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::cast_possible_truncation)]
     fn cache_eviction_different_hash_same_slot() {
         let mut cache = PreviewCache::new();
         // PreviewCache has 128 slots.

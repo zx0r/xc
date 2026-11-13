@@ -210,12 +210,12 @@ end
 // ── Signal Handling (Unix) ───────────────────────────────────────
 
 #[cfg(unix)]
-#[allow(unsafe_code)]
+#[allow(unsafe_code, reason = "POSIX async-signal-safe terminal restoration")]
 mod signals {
     unsafe extern "C" {
         fn signal(s: i32, h: usize) -> usize;
         fn raise(s: i32) -> i32;
-        fn write(fd: i32, buf: *const u8, count: usize) -> isize;
+        fn write(fd: i32, buf: *const core::ffi::c_void, count: usize) -> isize;
     }
     extern "C" fn handle_signal(sig: i32) {
         // Direct, async-signal-safe raw ANSI write to stderr (fd 2):
@@ -226,7 +226,7 @@ mod signals {
             b"\x1b[?1000l\x1b[?1002l\x1b[?1006l\x1b[?1015l\x1b[?25h\x1b[?1049l";
         // SAFETY: `write` is async-signal-safe per POSIX.1-2008; avoids stderr mutex deadlock.
         unsafe {
-            let _ = write(2, RESET_SEQ.as_ptr(), RESET_SEQ.len());
+            let _ = write(2, RESET_SEQ.as_ptr().cast(), RESET_SEQ.len());
         }
         // SAFETY: Restoring default signal disposition before re-raising.
         // `signal(sig, SIG_DFL)` is async-signal-safe per POSIX.
@@ -238,7 +238,10 @@ mod signals {
             let _ = raise(sig);
         }
     }
-    #[allow(clippy::redundant_pub_crate)]
+    #[allow(
+        clippy::redundant_pub_crate,
+        reason = "Explicit module visibility boundary for terminal signal handling"
+    )]
     pub(crate) fn install() {
         // SAFETY: Installing C-ABI handler for SIGINT (2).
         unsafe {
@@ -368,7 +371,10 @@ fn parse_record_args(args: &[String]) -> Action {
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "CLI argument parsing central dispatcher"
+)]
 fn parse_args(args: &[String]) -> Result<Cli, Error> {
     let mut history_path = None;
     let mut scope = None;
@@ -580,20 +586,21 @@ fn parse_args(args: &[String]) -> Result<Cli, Error> {
 }
 
 fn print_help(topic: Option<&str>) {
+    let mut out = std::io::stdout().lock();
     match topic {
         Some("init") => {
-            print!(
-                "Initialize shell integration hook\n\n\
+            let _ = out.write_all(
+                b"Initialize shell integration hook\n\n\
 Usage: xstory init <SHELL>\n\n\
 Arguments:\n  \
   <SHELL>  Target shell environment (supported: bash, zsh, fish)\n\n\
 Options:\n  \
-  -h, --help  Print help\n"
+  -h, --help  Print help\n",
             );
         }
         Some("history") => {
-            print!(
-                "Import or export history logs\n\n\
+            let _ = out.write_all(
+                b"Import or export history logs\n\n\
 Usage: xstory history <COMMAND> [PATH]\n\n\
 Commands:\n  \
   import  Import history from external shell history file (zsh, bash, fish)\n  \
@@ -601,12 +608,12 @@ Commands:\n  \
 Arguments:\n  \
   [PATH]  Target file path for import or export\n\n\
 Options:\n  \
-  -h, --help  Print help\n"
+  -h, --help  Print help\n",
             );
         }
         Some("record") => {
-            print!(
-                "Record command execution into history log\n\n\
+            let _ = out.write_all(
+                b"Record command execution into history log\n\n\
 Usage: xstory record [OPTIONS] [--] <COMMAND>...\n\n\
 Arguments:\n  \
   <COMMAND>...  Executed command line (or pass via stdin with --stdin)\n\n\
@@ -615,12 +622,12 @@ Options:\n  \
       --duration <MS>     Execution duration in milliseconds (default: 0)\n  \
       --cwd <PATH>        Working directory (default: current directory)\n  \
       --stdin             Read command string from standard input\n  \
-  -h, --help              Print help\n"
+  -h, --help              Print help\n",
             );
         }
         Some("search") => {
-            print!(
-                "Interactive fuzzy search picker (default)\n\n\
+            let _ = out.write_all(
+                b"Interactive fuzzy search picker (default)\n\n\
 Usage: xstory search [OPTIONS] [QUERY]\n\n\
 Arguments:\n  \
   [QUERY]  Initial search query\n\n\
@@ -630,12 +637,12 @@ Options:\n  \
   -p, --preview <MODE>   Preview mode (dynamic/fixed)\n  \
   -t, --theme <THEME>    Syntax theme (dark/light/catppuccin/tokyo-night/gruvbox/nord/cake)\n  \
   -H, --history <PATH>   Path to history file\n  \
-  -h, --help             Print help\n"
+  -h, --help             Print help\n",
             );
         }
         _ => {
-            print!(
-                "Minimalist Unix shell history engine\n\n\
+            let _ = out.write_all(
+                b"Minimalist Unix shell history engine\n\n\
 Usage: xstory [OPTIONS] [QUERY] [COMMAND]\n\n\
 Commands:\n  \
   search   Interactive fuzzy search picker (default)\n  \
@@ -650,7 +657,7 @@ Options:\n  \
   -p, --preview <MODE>   Preview mode (dynamic/fixed)\n  \
   -t, --theme <THEME>    Syntax theme (dark/light/catppuccin/tokyo-night/gruvbox/nord/cake)\n  \
   -h, --help             Print help\n  \
-  -V, --version          Print version\n"
+  -V, --version          Print version\n",
             );
         }
     }
@@ -660,7 +667,7 @@ Options:\n  \
 
 fn main() {
     if let Err(e) = run() {
-        eprintln!("xstory: {e}");
+        let _ = writeln!(std::io::stderr().lock(), "xstory: {e}");
         std::process::exit(e.exit_code());
     }
 }
@@ -674,7 +681,11 @@ fn run() -> Result<(), Error> {
             Ok(())
         }
         Action::Version => {
-            println!("xstory {}", env!("CARGO_PKG_VERSION"));
+            let _ = writeln!(
+                std::io::stdout().lock(),
+                "xstory {}",
+                env!("CARGO_PKG_VERSION")
+            );
             Ok(())
         }
         Action::Init { shell } => {
@@ -684,7 +695,7 @@ fn run() -> Result<(), Error> {
                 "fish" => FISH_HOOK,
                 _ => "",
             };
-            print!("{hook}");
+            let _ = std::io::stdout().lock().write_all(hook.as_bytes());
             Ok(())
         }
         action => execute(action, cli.history_path, cli.scope, cli.preview, cli.theme),
@@ -739,7 +750,10 @@ fn execute(
         }
         Action::HistoryImport { path } => {
             let count = record::import_history(path.as_deref(), &config)?;
-            eprintln!("xstory: imported {count} commands");
+            let _ = writeln!(
+                std::io::stderr().lock(),
+                "xstory: imported {count} commands"
+            );
             Ok(())
         }
         Action::HistoryExport { path } => {
@@ -767,8 +781,9 @@ fn execute(
                 tui::Outcome::Cancel => (None, 130),
             };
             if let Some(c) = cmd {
-                print!("{c}");
-                let _ = std::io::stdout().flush();
+                let mut out = std::io::stdout().lock();
+                let _ = out.write_all(c.as_bytes());
+                let _ = out.flush();
             }
             std::process::exit(code);
         }
@@ -779,7 +794,7 @@ fn execute(
 // ── Tests ────────────────────────────────────────────────────────
 
 #[cfg(test)]
-#[allow(clippy::panic)]
+#[allow(clippy::panic, reason = "CLI argument parsing unit test assertions")]
 mod tests {
     use super::*;
 
@@ -942,7 +957,8 @@ mod tests {
                     cwd,
                     from_stdin,
                 } => {
-                    assert!(cmd_parts.is_empty());
+                    let empty: &[String] = &[];
+                    assert_eq!(cmd_parts.as_slice(), empty);
                     assert_eq!(exit_code, 0);
                     assert_eq!(duration_ms, 100);
                     assert_eq!(cwd.as_deref(), Some("/tmp"));

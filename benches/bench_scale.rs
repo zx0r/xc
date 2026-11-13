@@ -1,8 +1,8 @@
 #![allow(
     clippy::expect_used,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::cast_precision_loss
+    clippy::print_stdout,
+    clippy::print_stderr,
+    reason = "Benchmark harness generates terminal reports and panics on harness setup failure"
 )]
 
 use std::fmt::Write as _;
@@ -192,7 +192,10 @@ struct QueryResult {
 }
 
 struct ScaleResult {
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "Report metadata field retained for schema completeness"
+    )]
     title: &'static str,
     count: usize,
     raw_mb: f64,
