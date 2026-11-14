@@ -1,17 +1,17 @@
 [package]
-name = "xstory"
-version = "0.1.7"
+name = "rs"
+version = "0.0.0"
 edition = "2024"
 resolver = "3"
 rust-version = "1.99.0"
-repository = "https://github.com/zx0r/xstory"
-description = "Minimalist Unix shell history engine"
-homepage = "https://github.com/zx0r/xstory#readme"
-authors = ["zx0r <admin@zx0r.io>"]
+repository = "https://github.com/zx0r/rs"
+description = "Ultra fast shell history engine"
+homepage = "https://github.com/zx0r/rs#readme"
+authors = ["zx0r <admin@xxxx.dev>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 categories = ["command-line-utilities"]
-keywords = ["history", "xstory", "cli", "dotfiles"]
+keywords = ["history", "shell", "cli", "dotfiles"]
 autobenches = false
 
 # Strict Source Ingestion Boundary: Whitelists strictly pure Rust sources & manifest
@@ -34,7 +34,7 @@ ratatui = { version = "0.30.2", default-features = false, features = [
 ] }
 memmap2 = "0.9.12"
 nucleo-matcher = "0.3.1"
-tree-sitter = "0.27.1"
+tree-sitter = "0.27.2"
 tree-sitter-bash = "0.25.1"
 rayon = "1.12.0"
 memchr = "2.8.3"

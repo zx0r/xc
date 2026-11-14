@@ -1,81 +1,81 @@
+use rs::arena;
+use rs::error::Error;
+use rs::record;
+use rs::tui;
 use std::io::Write;
 use std::path::PathBuf;
-use xstory::arena;
-use xstory::error::Error;
-use xstory::record;
-use xstory::tui;
 
 // ── Shell Hooks ──────────────────────────────────────────────────
 
 const BASH_HOOK: &str = r#"[[ $- == *i* ]] || return 0
-[[ -n "${XSTORY_DISABLE-}" ]] && return 0
-command -v xstory >/dev/null 2>&1 || return 0
+[[ -n "${RS_DISABLE-}" || -n "${RS_DISABLE-}" ]] && return 0
+command -v rs >/dev/null 2>&1 || return 0
 
-__xstory_init() {
-    local -i __xstory_last_histcmd=0
-    local __xstory_cmd=""
+__rs_init() {
+    local -i __rs_last_histcmd=0
+    local __rs_cmd=""
 
-    __xstory_preexec() {
-        __xstory_cmd="$BASH_COMMAND"
+    __rs_preexec() {
+        __rs_cmd="$BASH_COMMAND"
         if (( BASH_VERSINFO[0] >= 5 )); then
-            __xstory_start_time=${EPOCHREALTIME-}
+            __rs_start_time=${EPOCHREALTIME-}
         else
-            __xstory_start_time=$SECONDS
+            __rs_start_time=$SECONDS
         fi
     }
 
-    __xstory_precmd() {
+    __rs_precmd() {
         local exit_code=$1
-        if (( HISTCMD <= __xstory_last_histcmd )); then
-            __xstory_cmd=""
-            unset __xstory_start_time
+        if (( HISTCMD <= __rs_last_histcmd )); then
+            __rs_cmd=""
+            unset __rs_start_time
             return 0
         fi
-        __xstory_last_histcmd=$HISTCMD
+        __rs_last_histcmd=$HISTCMD
 
-        if [[ -n "${__xstory_cmd-}" && -n "${__xstory_start_time-}" ]]; then
+        if [[ -n "${__rs_cmd-}" && -n "${__rs_start_time-}" ]]; then
             local dur=0
             if (( BASH_VERSINFO[0] >= 5 )) && [[ -n "${EPOCHREALTIME-}" ]]; then
-                local start_us=${__xstory_start_time//[!0-9]}
+                local start_us=${__rs_start_time//[!0-9]}
                 local now_us=${EPOCHREALTIME//[!0-9]}
                 dur=$(( (now_us - start_us) / 1000 ))
                 (( dur < 0 )) && dur=0
             else
-                local dur_s=$(( SECONDS - __xstory_start_time ))
+                local dur_s=$(( SECONDS - __rs_start_time ))
                 (( dur_s < 0 )) && dur_s=0
                 dur=$(( dur_s * 1000 ))
             fi
 
-            if [[ "$__xstory_cmd" != [[:space:]]* && "$__xstory_cmd" != "__xstory"* ]]; then
-                printf '%s' "$__xstory_cmd" | xstory record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
+            if [[ "$__rs_cmd" != [[:space:]]* && "$__rs_cmd" != "__rs"* ]]; then
+                printf '%s' "$__rs_cmd" | rs record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
             fi
-            __xstory_cmd=""
-            unset __xstory_start_time
+            __rs_cmd=""
+            unset __rs_start_time
         fi
     }
 
     if [[ -n "${BLE_VERSION-}" ]]; then
-        blehook PREEXEC!='__xstory_preexec'
-        blehook PRECMD!='__xstory_precmd "$?"'
+        blehook PREEXEC!='__rs_preexec'
+        blehook PRECMD!='__rs_precmd "$?"'
     elif [[ -n "${bash_preexec_imported-}" || -n "${__bp_imported-}" ]]; then
-        preexec_functions+=(__xstory_preexec)
-        precmd_functions+=(__xstory_precmd_wrapper)
-        __xstory_precmd_wrapper() { __xstory_precmd "$?"; }
+        preexec_functions+=(__rs_preexec)
+        precmd_functions+=(__rs_precmd_wrapper)
+        __rs_precmd_wrapper() { __rs_precmd "$?"; }
     else
-        trap '__xstory_preexec' DEBUG
+        trap '__rs_preexec' DEBUG
         if [[ -z "${PROMPT_COMMAND-}" ]]; then
-            PROMPT_COMMAND='__xstory_precmd "$?"'
-        elif [[ "$PROMPT_COMMAND" != *"__xstory_precmd"* ]]; then
-            PROMPT_COMMAND='__xstory_precmd "$?"; '"$PROMPT_COMMAND"
+            PROMPT_COMMAND='__rs_precmd "$?"'
+        elif [[ "$PROMPT_COMMAND" != *"__rs_precmd"* ]]; then
+            PROMPT_COMMAND='__rs_precmd "$?"; '"$PROMPT_COMMAND"
         fi
     fi
 
     local KEY1='\C-x1'
     local KEY2='\C-x2'
 
-    __xstory_search_dispatch() {
+    __rs_search_dispatch() {
         local selected ret
-        selected=$(xstory -- "$READLINE_LINE")
+        selected=$(rs -- "$READLINE_LINE")
         ret=$?
         if [[ $ret -eq 0 && -n "$selected" ]]; then
             READLINE_LINE="$selected"
@@ -90,53 +90,53 @@ __xstory_init() {
         fi
     }
 
-    bind -x "\"$KEY1\": __xstory_search_dispatch"
+    bind -x "\"$KEY1\": __rs_search_dispatch"
     bind "\"$KEY2\": \"\""
 
     bind "\"\\C-r\": \"$KEY1$KEY2\""
     bind "\"\\e[A\": \"$KEY1$KEY2\""
 }
-__xstory_init
-unset -f __xstory_init
+__rs_init
+unset -f __rs_init
 "#;
 
 const ZSH_HOOK: &str = r#"[[ -o interactive ]] || return 0
-[[ -n "${XSTORY_DISABLE-}" ]] && return 0
-command -v xstory >/dev/null 2>&1 || return 0
+[[ -n "${RS_DISABLE-}" || -n "${RS_DISABLE-}" ]] && return 0
+command -v rs >/dev/null 2>&1 || return 0
 
 zmodload zsh/datetime 2>/dev/null
 autoload -Uz add-zsh-hook
 
-typeset -g __xstory_cmd=""
-typeset -F __xstory_start_time=0
+typeset -g __rs_cmd=""
+typeset -F __rs_start_time=0
 
-__xstory_preexec() {
-    __xstory_cmd="$1"
-    __xstory_start_time=$EPOCHREALTIME
+__rs_preexec() {
+    __rs_cmd="$1"
+    __rs_start_time=$EPOCHREALTIME
 }
 
-__xstory_precmd() {
+__rs_precmd() {
     local exit_code=$?
-    if [[ -n "$__xstory_cmd" ]]; then
-        if [[ "$__xstory_cmd" != [[:space:]]* ]]; then
+    if [[ -n "$__rs_cmd" ]]; then
+        if [[ "$__rs_cmd" != [[:space:]]* ]]; then
             local -F now=$EPOCHREALTIME
-            local -i dur=$(( (now - __xstory_start_time) * 1000 ))
+            local -i dur=$(( (now - __rs_start_time) * 1000 ))
             (( dur < 0 )) && dur=0
-            print -rn -- "$__xstory_cmd" | xstory record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
+            print -rn -- "$__rs_cmd" | rs record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
         fi
-        __xstory_cmd=""
-        __xstory_start_time=0
+        __rs_cmd=""
+        __rs_start_time=0
     fi
 }
 
-add-zsh-hook preexec __xstory_preexec
-add-zsh-hook precmd __xstory_precmd
+add-zsh-hook preexec __rs_preexec
+add-zsh-hook precmd __rs_precmd
 
-__xstory_widget() {
+__rs_widget() {
     emulate -L zsh
     zle -I
     local selected ret
-    selected=$(xstory -- "$BUFFER")
+    selected=$(rs -- "$BUFFER")
     ret=$?
     if [[ ($ret -eq 0 || $ret -eq 2) && -n "$selected" ]]; then
         BUFFER="$selected"
@@ -151,27 +151,27 @@ __xstory_widget() {
     fi
 }
 
-zle -N __xstory_widget
-bindkey '^R' __xstory_widget
-bindkey '^[[A' __xstory_widget
-bindkey -M viins '^R' __xstory_widget
-bindkey -M viins '^[[A' __xstory_widget
-bindkey -M vicmd '^R' __xstory_widget
-bindkey -M vicmd '^[[A' __xstory_widget
+zle -N __rs_widget
+bindkey '^R' __rs_widget
+bindkey '^[[A' __rs_widget
+bindkey -M viins '^R' __rs_widget
+bindkey -M viins '^[[A' __rs_widget
+bindkey -M vicmd '^R' __rs_widget
+bindkey -M vicmd '^[[A' __rs_widget
 
 if [[ -n "${ZVM_VERSION-}" ]]; then
     zvm_after_init_commands+=(
-        "bindkey -M viins '^R' __xstory_widget"
-        "bindkey -M vicmd '^R' __xstory_widget"
+        "bindkey -M viins '^R' __rs_widget"
+        "bindkey -M vicmd '^R' __rs_widget"
     )
 fi
 "#;
 
 const FISH_HOOK: &str = r#"status is-interactive; or return 0
-set -q XSTORY_DISABLE; and return 0
-command -q xstory; or return 0
+test -n "$RS_DISABLE" -o -n "$RS_DISABLE"; and return 0
+command -q rs; or return 0
 
-function __xstory_postexec --on-event fish_postexec
+function __rs_postexec --on-event fish_postexec
     set -l exit_code $status
     if set -q fish_private_mode
         return
@@ -181,11 +181,11 @@ function __xstory_postexec --on-event fish_postexec
     end
     set -l dur 0
     test -n "$CMD_DURATION"; and set dur $CMD_DURATION
-    printf '%s' "$argv[1]" | xstory record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
+    printf '%s' "$argv[1]" | rs record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
 end
 
-function __xstory_search
-    set -l selected (xstory -- (commandline -b) | string collect)
+function __rs_search
+    set -l selected (rs -- (commandline -b) | string collect)
     set -l ret $pipestatus[1]
     if test $ret -eq 0 -a -n "$selected"
         commandline -r -- "$selected"
@@ -199,11 +199,11 @@ function __xstory_search
     end
 end
 
-bind up __xstory_search
-bind \cr __xstory_search
+bind up __rs_search
+bind \cr __rs_search
 if bind -M insert >/dev/null 2>&1
-    bind -M insert up __xstory_search
-    bind -M insert \cr __xstory_search
+    bind -M insert up __rs_search
+    bind -M insert \cr __rs_search
 end
 "#;
 
@@ -482,7 +482,7 @@ fn parse_args(args: &[String]) -> Result<Cli, Error> {
             let extra = rest.get(2).map(String::as_str);
             if rest.len() > 3 || extra.is_some_and(|p| p.starts_with('-') && p != "-") {
                 return Err(Error::InvalidArgs(
-                    "usage: xstory history <import|export> [path]",
+                    "usage: rs history <import|export> [path]",
                 ));
             }
             match sub {
@@ -495,7 +495,7 @@ fn parse_args(args: &[String]) -> Result<Cli, Error> {
                 Some("-h" | "--help") => Action::Help(Some("history")),
                 _ => {
                     return Err(Error::InvalidArgs(
-                        "usage: xstory history <import|export> [path]",
+                        "usage: rs history <import|export> [path]",
                     ));
                 }
             }
@@ -591,7 +591,7 @@ fn print_help(topic: Option<&str>) {
         Some("init") => {
             let _ = out.write_all(
                 b"Initialize shell integration hook\n\n\
-Usage: xstory init <SHELL>\n\n\
+Usage: rs init <SHELL>\n\n\
 Arguments:\n  \
   <SHELL>  Target shell environment (supported: bash, zsh, fish)\n\n\
 Options:\n  \
@@ -601,7 +601,7 @@ Options:\n  \
         Some("history") => {
             let _ = out.write_all(
                 b"Import or export history logs\n\n\
-Usage: xstory history <COMMAND> [PATH]\n\n\
+Usage: rs history <COMMAND> [PATH]\n\n\
 Commands:\n  \
   import  Import history from external shell history file (zsh, bash, fish)\n  \
   export  Export deduplicated history database to TSV\n\n\
@@ -614,7 +614,7 @@ Options:\n  \
         Some("record") => {
             let _ = out.write_all(
                 b"Record command execution into history log\n\n\
-Usage: xstory record [OPTIONS] [--] <COMMAND>...\n\n\
+Usage: rs record [OPTIONS] [--] <COMMAND>...\n\n\
 Arguments:\n  \
   <COMMAND>...  Executed command line (or pass via stdin with --stdin)\n\n\
 Options:\n  \
@@ -628,7 +628,7 @@ Options:\n  \
         Some("search") => {
             let _ = out.write_all(
                 b"Interactive fuzzy search picker (default)\n\n\
-Usage: xstory search [OPTIONS] [QUERY]\n\n\
+Usage: rs search [OPTIONS] [QUERY]\n\n\
 Arguments:\n  \
   [QUERY]  Initial search query\n\n\
 Options:\n  \
@@ -642,8 +642,8 @@ Options:\n  \
         }
         _ => {
             let _ = out.write_all(
-                b"Minimalist Unix shell history engine\n\n\
-Usage: xstory [OPTIONS] [QUERY] [COMMAND]\n\n\
+                b"Ultra fast shell history engine\n\n\
+Usage: rs [OPTIONS] [QUERY] [COMMAND]\n\n\
 Commands:\n  \
   search   Interactive fuzzy search picker (default)\n  \
   history  Import or export history logs\n  \
@@ -667,7 +667,7 @@ Options:\n  \
 
 fn main() {
     if let Err(e) = run() {
-        let _ = writeln!(std::io::stderr().lock(), "xstory: {e}");
+        let _ = writeln!(std::io::stderr().lock(), "rs: {e}");
         std::process::exit(e.exit_code());
     }
 }
@@ -681,11 +681,7 @@ fn run() -> Result<(), Error> {
             Ok(())
         }
         Action::Version => {
-            let _ = writeln!(
-                std::io::stdout().lock(),
-                "xstory {}",
-                env!("CARGO_PKG_VERSION")
-            );
+            let _ = writeln!(std::io::stdout().lock(), "rs {}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
         Action::Init { shell } => {
@@ -750,10 +746,7 @@ fn execute(
         }
         Action::HistoryImport { path } => {
             let count = record::import_history(path.as_deref(), &config)?;
-            let _ = writeln!(
-                std::io::stderr().lock(),
-                "xstory: imported {count} commands"
-            );
+            let _ = writeln!(std::io::stderr().lock(), "rs: imported {count} commands");
             Ok(())
         }
         Action::HistoryExport { path } => {
@@ -1087,8 +1080,8 @@ mod tests {
 
     #[test]
     fn shell_hooks_content() {
-        assert!(BASH_HOOK.contains("__xstory_search"));
-        assert!(ZSH_HOOK.contains("__xstory_widget"));
-        assert!(FISH_HOOK.contains("__xstory_search"));
+        assert!(BASH_HOOK.contains("__rs_search"));
+        assert!(ZSH_HOOK.contains("__rs_widget"));
+        assert!(FISH_HOOK.contains("__rs_search"));
     }
 }

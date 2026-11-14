@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="https://github.com/zx0r/xstory/releases">
-    <img src="https://img.shields.io/github/v/release/zx0r/xstory?color=4be1ff&label=RELEASE&style=flat-square&logo=github&labelColor=1a1a1a" alt="Release" />
+  <a href="https://github.com/zx0r/rs/releases">
+    <img src="https://img.shields.io/github/v/release/zx0r/rs?color=4be1ff&label=RELEASE&style=flat-square&logo=github&labelColor=1a1a1a" alt="Release" />
   </a>
   <a href="LICENSE-MIT">
     <img src="https://img.shields.io/badge/LICENSE-MIT%2FApache--2.0-9fef00?style=flat-square&logo=opensourceinitiative&logoColor=white&labelColor=1a1a1a" alt="License" />
@@ -14,12 +14,12 @@
 </p>
 
 <p align="center">
-  <img src="assets/images/xstory-banner.jpg" alt="xstory banner" style="border-radius: 8px; max-width: 100%;" />
+  <img src="assets/images/rs-banner.jpg" alt="rs banner" style="border-radius: 8px; max-width: 100%;" />
 </p>
 
 <p align="center">
   <a href="https://github.com/user-attachments/assets/808dbcbd-fad3-43f3-a6c9-788406c55331">
-    <img src="assets/gif/xstory-preview.gif" alt="xstory demo — sub-millisecond shell history fuzzy search and preview" style="border-radius: 8px; max-width: 100%;" />
+    <img src="assets/gif/rs-preview.gif" alt="rs demo — sub-millisecond shell history fuzzy search and preview" style="border-radius: 8px; max-width: 100%;" />
   </a>
 </p>
 
@@ -29,14 +29,14 @@
 
 ```bash
 # Cargo (crates.io)
-cargo install xstory
+cargo install rs
 
 # Homebrew (macOS / Linux)
-brew install zx0r/tap/xstory
+brew install zx0r/tap/rs
 
 # Build from source (LTO fat, stripped)
-gh repo clone zx0r/xstory
-cd xstory && just release
+gh repo clone zx0r/rs
+cd rs && just release
 ```
 
 ---
@@ -45,31 +45,31 @@ cd xstory && just release
 
 ```bash
 # Zsh (~/.zshrc)
-eval "$(xstory init zsh)"
+eval "$(rs init zsh)"
 
 # Bash (~/.bashrc)
-eval "$(xstory init bash)"
+eval "$(rs init bash)"
 
 # Fish (~/.config/fish/config.fish)
-xstory init fish | source
+rs init fish | source
 ```
 ---
 
 ### Manifest
 
-The xstory Unix-style approach:
+The rs Unix-style approach:
 
 - **Core**: Ultra-fast, deterministic local engine (utilizing zero-copy `mmap`, `O_APPEND` for TSV files). 
 - **Synchronization**: Achieved by composing standard Unix utilities to operate on the `history.tsv` storage format. 
 
-Since the xstory data store is simply a flat text file (`history.tsv`), there is no need for custom synchronization code within the Rust binary itself! Git already handles diffs, merges, SSH authentication, signed commits, and remote repository interactions better than any built-in library could.
+Since the rs data store is simply a flat text file (`history.tsv`), there is no need for custom synchronization code within the Rust binary itself! Git already handles diffs, merges, SSH authentication, signed commits, and remote repository interactions better than any built-in library could.
 
 #### Remote Synchronization: The Unix Paradigm
 
-Unlike monolithic solutions that bundle background HTTP/gRPC daemons, database locks, and proprietary sync servers into your shell prompt, `xstory` follows the **Unix single-responsibility principle**:
+Unlike monolithic solutions that bundle background HTTP/gRPC daemons, database locks, and proprietary sync servers into your shell prompt, `rs` follows the **Unix single-responsibility principle**:
 
 1. **Format as Interface**: All history is stored in a clean, newline-delimited TSV (`history.tsv`) with atomic append guarantees.
-2. **Zero In-Process Network Bloat**: `xstory` never initiates network sockets, keeping memory footprints low (< 5 MB) and execution deterministic.
+2. **Zero In-Process Network Bloat**: `rs` never initiates network sockets, keeping memory footprints low (< 5 MB) and execution deterministic.
 3. **Native Git & Fleet Orchestration**: Multi-machine history synchronization is handled out-of-band via Git, cron/systemd timers, or dotfile managers (`git-crypt`, `sops`, `age`).
 
 ---
@@ -118,20 +118,20 @@ Layout uses a 3-panel stacked hierarchy: `History` $\rightarrow$ `Preview` $\rig
 ### Configuration
 
 ```toml
-# [OPTIONAL] Path: '~/.config/xstory/config'
+# [OPTIONAL] Path: '~/.config/rs/config'
 
-history_path = "~/.local/share/xstory/history.tsv"
+history_path = "~/.local/share/rs/history.tsv"
 scroll_off = 4
 preview_mode = "fixed" # OR "dynamic"
 theme = "dark" # OR "light" | "catppuccin" | "tokyo-night" | "gruvbox" | "nord" | "cake"
 ```
 
 CLI flags override config values:
-- `xstory -t <theme>` (or `--theme=<theme>`)
-- `xstory -p <preview>` (or `--preview=<fixed|dynamic>`)
-- `xstory -s <scope>` (or `--scope=<global|local>`)
+- `rs -t <theme>` (or `--theme=<theme>`)
+- `rs -p <preview>` (or `--preview=<fixed|dynamic>`)
+- `rs -s <scope>` (or `--scope=<global|local>`)
 
-Environment variables: `XSTORY_THEME`, `XSTORY_PREVIEW`, `XSTORY_HISTORY_PATH`, `XSTORY_SCROLL_OFF`.
+Environment variables: `RS_THEME`, `RS_PREVIEW`, `RS_HISTORY_PATH`, `RS_SCROLL_OFF`.
 
 ---
 
@@ -139,20 +139,20 @@ Environment variables: `XSTORY_THEME`, `XSTORY_PREVIEW`, `XSTORY_HISTORY_PATH`, 
 
 ```bash
 # Launch interactive search widget
-xstory [QUERY]
+rs [QUERY]
 
 # Direct query via subcommand
-xstory search -q "docker compose"
+rs search -q "docker compose"
 
 # Ingest execution log entry (invoked by shell hook)
-xstory record --exit=0 --duration=50 --cwd="$PWD" -- git status
-printf 'multiline command' | xstory record --stdin --cwd="$PWD" --exit=0 --duration=50
+rs record --exit=0 --duration=50 --cwd="$PWD" -- git status
+printf 'multiline command' | rs record --stdin --cwd="$PWD" --exit=0 --duration=50
 
 # Import existing shell history file
-xstory history import ~/.zsh_history
+rs history import ~/.zsh_history
 
 # Export deduplicated history database to stdout
-xstory history export > history.tsv
+rs history export > history.tsv
 ```
 
 ---
@@ -160,11 +160,11 @@ xstory history export > history.tsv
 ### [ x s t o r y ]
 
 <p align="center">
-  <img src="./assets/gif/xstory-crab.gif" width="360" height="" alt="xstory" />
+  <img src="./assets/gif/rs-crab.gif" width="360" height="" alt="rs" />
 </p>
 
 ```shell
-xstory [QUERY]
+rs [QUERY]
 
 [✓] zero-copy columnar arena
 [✓] sub-millisecond bitmask pruning

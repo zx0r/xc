@@ -12,23 +12,23 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use xstory::arena::{Arena, Scope};
-use xstory::search::search;
+use rs::arena::{Arena, Scope};
+use rs::search::search;
 
 const SAMPLES: usize = 100;
 const WARMUP: usize = 10;
 
-const PATH_100K: &str = "/tmp/xstory_100k.tsv";
-const PATH_500K: &str = "/tmp/xstory_500k.tsv";
-const PATH_1M: &str = "/tmp/xstory_1m.tsv";
+const PATH_100K: &str = "/tmp/rs_100k.tsv";
+const PATH_500K: &str = "/tmp/rs_500k.tsv";
+const PATH_1M: &str = "/tmp/rs_1m.tsv";
 
 const REPORT_PATH: &str = "specs/BENCHMARK_STRESS_REPORT.md";
 
 const TEMPLATES: &[(&str, &str, i32)] = &[
-    ("git status", "/Users/x0r/x/dev/own/xstory", 1),
+    ("git status", "/Users/x0r/x/dev/own/rs", 1),
     (
         "cargo test --workspace --all-targets",
-        "/Users/x0r/.config/xstory",
+        "/Users/x0r/.config/rs",
         0,
     ),
     (
@@ -44,12 +44,12 @@ const TEMPLATES: &[(&str, &str, i32)] = &[
     ("nvim src/main.rs", "/Users/x0r/Downloads", 0),
     (
         "git commit -m \"fix: resolve edge case in parser pipeline\"",
-        "/Users/x0r/x/dev/own/xstory",
+        "/Users/x0r/x/dev/own/rs",
         0,
     ),
     (
-        "curl -sSL https://api.github.com/repos/zx0r/xstory | jq .stargazers_count",
-        "/Users/x0r/.config/xstory",
+        "curl -sSL https://api.github.com/repos/zx0r/rs | jq .stargazers_count",
+        "/Users/x0r/.config/rs",
         0,
     ),
     (
@@ -67,20 +67,20 @@ const TEMPLATES: &[(&str, &str, i32)] = &[
         "/Users/x0r/Downloads",
         0,
     ),
-    ("git diff HEAD~1", "/Users/x0r/x/dev/own/xstory", 0),
-    ("cargo build --release", "/Users/x0r/.config/xstory", 0),
+    ("git diff HEAD~1", "/Users/x0r/x/dev/own/rs", 0),
+    ("cargo build --release", "/Users/x0r/.config/rs", 0),
     ("ls -la /var/log", "/var/log", 0),
-    ("cd ~/dev/own/xstory", "/Users/x0r", 0),
+    ("cd ~/dev/own/rs", "/Users/x0r", 0),
     (
         "git pull --rebase origin main",
-        "/Users/x0r/x/dev/own/xstory",
+        "/Users/x0r/x/dev/own/rs",
         0,
     ),
     ("htop", "/Users/x0r", 0),
     ("ps aux | grep rust", "/Users/x0r", 0),
     ("cat /etc/hosts", "/etc", 0),
     ("make test", "/Users/x0r/x/dev/work/backend", 2),
-    ("git log --oneline -n 20", "/Users/x0r/x/dev/own/xstory", 0),
+    ("git log --oneline -n 20", "/Users/x0r/x/dev/own/rs", 0),
 ];
 
 fn ensure_dataset(path: &Path, count: usize) {
@@ -221,7 +221,7 @@ fn run_scale_suite(
     let file_mb = file_bytes as f64 / 1_000_000.0;
 
     println!("================================================================================");
-    println!("     xstory — {title} (100 STATISTICAL RUNS)");
+    println!("     rs — {title} (100 STATISTICAL RUNS)");
     println!("================================================================================");
     println!("Dataset Scale   : {count} records ({file_mb:.2} MB raw TSV)");
     println!("Statistical Runs: N = {SAMPLES} iterations (after {WARMUP} warm-up runs)");
@@ -356,7 +356,7 @@ fn fmt_num(n: usize) -> String {
 fn generate_markdown_report(results: &[ScaleResult]) {
     let mut out = String::with_capacity(32 * 1024);
 
-    out.push_str("# Multi-Scale Empirical Stress Benchmark Report: xstory vs. Atuin\n");
+    out.push_str("# Multi-Scale Empirical Stress Benchmark Report: rs vs. Atuin\n");
     out.push_str("**Test Matrix:** 100,000 | 500,000 | 1,000,000 Records\n");
     out.push_str("**Methodology:** N = 100 Iterations per Query Archetype (10 Warm-up Runs)\n");
     out.push_str(
@@ -411,8 +411,8 @@ fn generate_markdown_report(results: &[ScaleResult]) {
     }
 
     out.push_str("\n---\n\n");
-    out.push_str("## Domain 3: Comparative Architectural Superiority (xstory vs. Atuin)\n\n");
-    out.push_str("| Microarchitectural Metric | Atuin (v18.24.4, SQLite WAL) | xstory (v0.1.6, Columnar Arena) | Superiority Factor | Physical Mechanism |\n");
+    out.push_str("## Domain 3: Comparative Architectural Superiority (rs vs. Atuin)\n\n");
+    out.push_str("| Microarchitectural Metric | Atuin (v18.24.4, SQLite WAL) | rs (v0.1.6, Columnar Arena) | Superiority Factor | Physical Mechanism |\n");
     out.push_str("|:---|:---:|:---:|:---:|:---|\n");
     out.push_str("| **Binary Executable Size** | 22.80 MB | **4.10 MB** (1.4 MB stripped) | **5.6× smaller** | Zero async/gRPC/SQL bloat |\n");
     out.push_str("| **Mach-O `__TEXT` Section** | 18.25 MB | **2.85 MB** | **6.4× smaller** | Fits in L2/L3; zero L1I cache misses |\n");
@@ -445,7 +445,7 @@ fn main() {
     }
 
     println!("\n################################################################################");
-    println!("     xstory — MULTI-SCALE EMPIRICAL STRESS TEST & MICROARCHITECTURAL BENCHMARK");
+    println!("     rs — MULTI-SCALE EMPIRICAL STRESS TEST & MICROARCHITECTURAL BENCHMARK");
     println!("            (100,000 | 500,000 | 1,000,000 RECORDS — N = 100 SAMPLE RUNS)");
     println!("################################################################################\n");
 

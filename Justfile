@@ -5,7 +5,7 @@ set dotenv-load := false
 set export := false
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-bin := "xstory"
+bin := "rs"
 target_dir := "target"
 
 default: qa
@@ -61,7 +61,7 @@ bench *args:
 bench-scale:
     cargo bench --bench bench_scale
 
-# Run comparative stress benchmark: xstory vs Atuin (100k/500k/1M, zero hardcode)
+# Run comparative stress benchmark: rs vs Atuin (100k/500k/1M, zero hardcode)
 bench-comparative:
     cargo bench --bench bench_comparative
 

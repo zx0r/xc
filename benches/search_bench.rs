@@ -4,11 +4,11 @@
 )]
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use rs::arena::{Arena, Scope};
+use rs::search::search;
 use std::hint::black_box;
 use std::io::Write;
 use std::path::Path;
-use xstory::arena::{Arena, Scope};
-use xstory::search::search;
 
 const BENCH_ENTRY_COUNT: usize = 100_000;
 
@@ -30,7 +30,7 @@ fn generate_history_tsv(path: &Path, count: usize) -> u64 {
     ];
 
     let cwds = [
-        "/Users/developer/projects/xstory",
+        "/Users/developer/projects/rs",
         "/Users/developer/projects/backend",
         "/Users/developer/projects/frontend",
         "/tmp",
@@ -72,7 +72,7 @@ fn bench_search_pipeline(c: &mut Criterion) {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("bench_search_100k.tsv");
     generate_history_tsv(&path, BENCH_ENTRY_COUNT);
-    let arena = Arena::load(&path, Some("/Users/developer/projects/xstory")).expect("load");
+    let arena = Arena::load(&path, Some("/Users/developer/projects/rs")).expect("load");
 
     let mut group = c.benchmark_group("search_pipeline");
 

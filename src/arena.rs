@@ -590,7 +590,7 @@ impl Arena {
 // ── Config ───────────────────────────────────────────────────────
 
 impl Config {
-    /// Load config: env vars → `~/.config/xstory/config` → compiled-in defaults.
+    /// Load config: env vars → `~/.config/rs/config` → compiled-in defaults.
     #[must_use]
     pub fn load() -> Self {
         let mut cfg = Self::defaults();
@@ -599,22 +599,25 @@ impl Config {
         {
             Self::parse_config_file(&contents, &mut cfg);
         }
-        if let Ok(val) = std::env::var("XSTORY_HISTORY_PATH") {
+        if let Ok(val) =
+            std::env::var("RS_HISTORY_PATH").or_else(|_| std::env::var("RS_HISTORY_PATH"))
+        {
             cfg.history_path = PathBuf::from(val);
         }
-        if let Ok(val) = std::env::var("XSTORY_SCROLL_OFF")
+        if let Ok(val) =
+            std::env::var("RS_SCROLL_OFF").or_else(|_| std::env::var("XSTORY_SCROLL_OFF"))
             && let Ok(n) = val.parse::<u16>()
         {
             cfg.scroll_off = n;
         }
-        if let Ok(val) = std::env::var("XSTORY_PREVIEW") {
+        if let Ok(val) = std::env::var("RS_PREVIEW").or_else(|_| std::env::var("XSTORY_PREVIEW")) {
             if val.eq_ignore_ascii_case("fixed") {
                 cfg.preview_mode = PreviewMode::Fixed;
             } else if val.eq_ignore_ascii_case("dynamic") {
                 cfg.preview_mode = PreviewMode::Dynamic;
             }
         }
-        if let Ok(val) = std::env::var("XSTORY_THEME")
+        if let Ok(val) = std::env::var("RS_THEME").or_else(|_| std::env::var("XSTORY_THEME"))
             && let Ok(t) = val.parse::<Theme>()
         {
             cfg.theme = Some(t);
@@ -624,8 +627,16 @@ impl Config {
 
     fn defaults() -> Self {
         let history_path = std::env::var("HOME").map_or_else(
-            |_| PathBuf::from("/tmp/xstory_history.tsv"),
-            |h| PathBuf::from(h).join(".local/share/xstory/history.tsv"),
+            |_| PathBuf::from("/tmp/rs_history.tsv"),
+            |h| {
+                let primary = PathBuf::from(&h).join(".local/share/rs/history.tsv");
+                let legacy = PathBuf::from(&h).join(".local/share/xstory/history.tsv");
+                if !primary.exists() && legacy.exists() {
+                    legacy
+                } else {
+                    primary
+                }
+            },
         );
         Self {
             history_path,
@@ -642,9 +653,14 @@ impl Config {
     }
 
     fn config_file_path() -> Option<PathBuf> {
-        std::env::var("HOME")
-            .ok()
-            .map(|h| PathBuf::from(h).join(".config/xstory/config"))
+        let home = std::env::var("HOME").ok()?;
+        let primary = PathBuf::from(&home).join(".config/rs/config");
+        let legacy = PathBuf::from(&home).join(".config/xstory/config");
+        if !primary.exists() && legacy.exists() {
+            Some(legacy)
+        } else {
+            Some(primary)
+        }
     }
 
     fn parse_config_file(contents: &str, cfg: &mut Self) {
@@ -919,16 +935,16 @@ mod tests {
     fn config_env_override() {
         let dir = tempfile::tempdir().expect("tempdir");
         let custom = dir.path().join("custom.tsv");
-        unsafe { std::env::set_var("XSTORY_HISTORY_PATH", &custom) };
+        unsafe { std::env::set_var("RS_HISTORY_PATH", &custom) };
         let cfg = Config::load();
-        unsafe { std::env::remove_var("XSTORY_HISTORY_PATH") };
+        unsafe { std::env::remove_var("RS_HISTORY_PATH") };
         assert_eq!(cfg.history_path, custom);
     }
 
     #[test]
     fn config_defaults() {
         unsafe {
-            std::env::remove_var("XSTORY_HISTORY_PATH");
+            std::env::remove_var("RS_HISTORY_PATH");
             std::env::remove_var("XSTORY_SCROLL_OFF");
         }
         let cfg = Config::load();

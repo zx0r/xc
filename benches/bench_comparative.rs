@@ -12,7 +12,7 @@
     reason = "Comparative benchmark reporting and assertion harness"
 )]
 
-//! Comparative Benchmark & Stress Test: xstory vs. Atuin
+//! Comparative Benchmark & Stress Test: rs vs. Atuin
 //!
 //! Fully automated. Zero hardcoded data. Every number in the generated report
 //! comes from live measurements on the executing machine.
@@ -20,7 +20,7 @@
 //! Architecture:
 //! ┌──────────────────────────────────────────────────────────────────┐
 //! │ 1. Dataset Generation   — Deterministic synthetic TSV + SQLite  │
-//! │ 2. xstory Measurement   — In-process Arena load + search        │
+//! │ 2. rs Measurement   — In-process Arena load + search        │
 //! │ 3. Atuin Measurement    — Subprocess via `atuin search` CLI     │
 //! │ 4. Kernel Counters      — `/usr/bin/time -l` PMU parsing        │
 //! │ 5. Binary Metrics       — `size(1)` + `cargo tree` + stat(2)    │
@@ -37,8 +37,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use xstory::arena::{Arena, Scope};
-use xstory::search::search;
+use rs::arena::{Arena, Scope};
+use rs::search::search;
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -129,7 +129,7 @@ const COMMAND_TEMPLATES: &[(&str, &str, i32)] = &[
 
 struct QuerySpec {
     label: &'static str,
-    xstory_query: &'static str,
+    rs_query: &'static str,
     atuin_query: &'static str,
     atuin_mode: &'static str,
     scope: Scope,
@@ -138,35 +138,35 @@ struct QuerySpec {
 const QUERY_SUITE: &[QuerySpec] = &[
     QuerySpec {
         label: "Empty Query (Reverse-Chrono Dump)",
-        xstory_query: "",
+        rs_query: "",
         atuin_query: "",
         atuin_mode: "prefix",
         scope: Scope::Global,
     },
     QuerySpec {
         label: "Prefix Match ('^git')",
-        xstory_query: "^git",
+        rs_query: "^git",
         atuin_query: "git",
         atuin_mode: "prefix",
         scope: Scope::Global,
     },
     QuerySpec {
         label: "Substring ('cargo test')",
-        xstory_query: "'cargo test",
+        rs_query: "'cargo test",
         atuin_query: "cargo test",
         atuin_mode: "fulltext",
         scope: Scope::Global,
     },
     QuerySpec {
         label: "Multi-Word Non-Contiguous ('build rel')",
-        xstory_query: "build release",
+        rs_query: "build release",
         atuin_query: "build release",
         atuin_mode: "fuzzy",
         scope: Scope::Global,
     },
     QuerySpec {
         label: "Fuzzy Ranked ('status')",
-        xstory_query: "status",
+        rs_query: "status",
         atuin_query: "status",
         atuin_mode: "fuzzy",
         scope: Scope::Global,
@@ -200,8 +200,8 @@ struct Stats {
 #[derive(Clone, Debug)]
 struct QueryResult {
     label: &'static str,
-    xstory: Stats,
-    xstory_matches: usize,
+    rs: Stats,
+    rs_matches: usize,
     atuin: Option<Stats>,
 }
 
@@ -211,8 +211,8 @@ struct ScaleResult {
     raw_mb: f64,
     ram_mb: f64,
     cache_tier: &'static str,
-    xstory_load: Stats,
-    xstory_throughput_gb_s: f64,
+    rs_load: Stats,
+    rs_throughput_gb_s: f64,
     queries: Vec<QueryResult>,
 }
 
@@ -290,7 +290,7 @@ fn compute_stats(samples: &mut [Duration]) -> Stats {
 // ── Dataset Generation ───────────────────────────────────────────────────────
 
 fn dataset_paths(count: usize) -> (PathBuf, PathBuf, PathBuf) {
-    let base = PathBuf::from(format!("/tmp/xstory_bench_{count}"));
+    let base = PathBuf::from(format!("/tmp/rs_bench_{count}"));
     (
         base.with_extension("tsv"),
         base.with_extension("db"),
@@ -450,8 +450,8 @@ struct AtuinEnv {
 }
 
 fn setup_atuin_env(db_path: &Path) -> AtuinEnv {
-    let data_dir = PathBuf::from("/tmp/xstory_bench_atuin_data");
-    let config_dir = PathBuf::from("/tmp/xstory_bench_atuin_config");
+    let data_dir = PathBuf::from("/tmp/rs_bench_atuin_data");
+    let config_dir = PathBuf::from("/tmp/rs_bench_atuin_config");
 
     fs::create_dir_all(&data_dir).expect("create atuin data dir");
     fs::create_dir_all(&config_dir).expect("create atuin config dir");
@@ -488,9 +488,9 @@ fn setup_atuin_env(db_path: &Path) -> AtuinEnv {
     }
 }
 
-// ── xstory Benchmarks (In-Process) ───────────────────────────────────────────
+// ── rs Benchmarks (In-Process) ───────────────────────────────────────────
 
-fn bench_xstory_load(path: &Path, expected_count: usize) -> (Stats, f64) {
+fn bench_rs_load(path: &Path, expected_count: usize) -> (Stats, f64) {
     let file_bytes = fs::metadata(path).map_or(0, |m| m.len());
     let mut samples = Vec::with_capacity(WARMUP + SAMPLES);
 
@@ -514,7 +514,7 @@ fn bench_xstory_load(path: &Path, expected_count: usize) -> (Stats, f64) {
     (stats, throughput)
 }
 
-fn bench_xstory_search(arena: &Arena, query: &str, scope: Scope) -> (Stats, usize) {
+fn bench_rs_search(arena: &Arena, query: &str, scope: Scope) -> (Stats, usize) {
     // Warmup
     for _ in 0..WARMUP {
         let _ = std::hint::black_box(search(arena, query, scope));
@@ -860,7 +860,7 @@ fn generate_report(
     let now = chrono_stamp();
 
     // Header
-    out.push_str("# Multi-Scale Empirical Stress Benchmark Report: xstory vs. Atuin\n\n");
+    out.push_str("# Multi-Scale Empirical Stress Benchmark Report: rs vs. Atuin\n\n");
     let _ = writeln!(out, "> **Generated:** {now}  ");
     let _ = writeln!(
         out,
@@ -870,7 +870,7 @@ fn generate_report(
     out.push_str("> **Methodology:** All data measured live. Zero hardcoded values.  \n");
     let _ = writeln!(
         out,
-        "> **xstory Samples:** N = {SAMPLES} iterations ({WARMUP} warm-up) | **Atuin Samples:** N = {ATUIN_SAMPLES} ({ATUIN_WARMUP} warm-up)"
+        "> **rs Samples:** N = {SAMPLES} iterations ({WARMUP} warm-up) | **Atuin Samples:** N = {ATUIN_SAMPLES} ({ATUIN_WARMUP} warm-up)"
     );
     out.push_str("> **HCI Display SLA:** 120 Hz / ProMotion (< 8.33 ms) & 60 Hz (< 16.66 ms)\n\n");
 
@@ -889,8 +889,8 @@ fn generate_report(
             r.raw_mb,
             r.ram_mb,
             r.cache_tier,
-            fmt_duration(r.xstory_load.median),
-            r.xstory_throughput_gb_s
+            fmt_duration(r.rs_load.median),
+            r.rs_throughput_gb_s
         );
     }
 
@@ -906,20 +906,20 @@ fn generate_report(
         .any(|r| r.queries.iter().any(|q| q.atuin.is_some()));
 
     if has_atuin {
-        out.push_str("| Scale | Query Archetype | xstory p50 | xstory p95 | xstory p99 | Atuin p50 | Atuin p95 | Speedup (p50) | 120Hz SLA |\n");
+        out.push_str("| Scale | Query Archetype | rs p50 | rs p95 | rs p99 | Atuin p50 | Atuin p95 | Speedup (p50) | 120Hz SLA |\n");
         out.push_str("|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n");
 
         for r in scale_results {
             for q in &r.queries {
-                let x_p50 = fmt_duration(q.xstory.median);
-                let x_p95 = fmt_duration(q.xstory.p95);
-                let x_p99 = fmt_duration(q.xstory.p99);
-                let sla = sla_verdict(q.xstory.p95);
+                let x_p50 = fmt_duration(q.rs.median);
+                let x_p95 = fmt_duration(q.rs.p95);
+                let x_p99 = fmt_duration(q.rs.p99);
+                let sla = sla_verdict(q.rs.p95);
 
                 if let Some(a) = &q.atuin {
                     let a_p50 = fmt_duration(a.median);
                     let a_p95 = fmt_duration(a.p95);
-                    let speedup = ratio_str(a.median.as_secs_f64(), q.xstory.median.as_secs_f64());
+                    let speedup = ratio_str(a.median.as_secs_f64(), q.rs.median.as_secs_f64());
                     let _ = writeln!(
                         out,
                         "| {} | {} | {} | {} | {} | {} | {} | {} faster | {} |",
@@ -953,16 +953,16 @@ fn generate_report(
 
         for r in scale_results {
             for q in &r.queries {
-                let sla = sla_verdict(q.xstory.p95);
+                let sla = sla_verdict(q.rs.p95);
                 let _ = writeln!(
                     out,
                     "| {} | {} | {} | {} | {} | {} | {} |",
                     fmt_num(r.count),
                     q.label,
-                    fmt_duration(q.xstory.median),
-                    fmt_duration(q.xstory.p95),
-                    fmt_duration(q.xstory.p99),
-                    fmt_num(q.xstory_matches),
+                    fmt_duration(q.rs.median),
+                    fmt_duration(q.rs.p95),
+                    fmt_duration(q.rs.p99),
+                    fmt_num(q.rs_matches),
                     sla
                 );
             }
@@ -975,7 +975,7 @@ fn generate_report(
     out.push_str("## Domain 3: Binary Footprint & Supply Chain Metrics\n\n");
 
     if let Some(a) = a_bin_metrics {
-        out.push_str("| Metric | Atuin (measured) | xstory (measured) | Ratio | Significance |\n");
+        out.push_str("| Metric | Atuin (measured) | rs (measured) | Ratio | Significance |\n");
         out.push_str("|:---|:---:|:---:|:---:|:---|\n");
 
         let _ = writeln!(
@@ -1000,7 +1000,7 @@ fn generate_report(
             ratio_str(a.dep_count as f64, x_bin_metrics.dep_count as f64)
         );
     } else {
-        out.push_str("| Metric | xstory (measured) |\n");
+        out.push_str("| Metric | rs (measured) |\n");
         out.push_str("|:---|:---:|\n");
         let _ = writeln!(
             out,
@@ -1026,7 +1026,7 @@ fn generate_report(
 
     if let Some(a) = a_kern {
         out.push_str(
-            "| Metric | Atuin (measured) | xstory (measured) | Ratio | Physical Mechanism |\n",
+            "| Metric | Atuin (measured) | rs (measured) | Ratio | Physical Mechanism |\n",
         );
         out.push_str("|:---|:---:|:---:|:---:|:---|\n");
 
@@ -1093,7 +1093,7 @@ fn generate_report(
             )
         );
     } else {
-        out.push_str("| Metric | xstory (measured) |\n");
+        out.push_str("| Metric | rs (measured) |\n");
         out.push_str("|:---|:---:|\n");
         let _ = writeln!(
             out,
@@ -1117,7 +1117,7 @@ fn generate_report(
     if has_atuin {
         out.push_str("\n---\n\n");
         out.push_str("## Domain 5: Comparative Latency Summary by Scale\n\n");
-        out.push_str("| Scale | Best xstory p50 | Worst xstory p95 | Best Atuin p50 | Worst Atuin p95 | Min Speedup | Max Speedup |\n");
+        out.push_str("| Scale | Best rs p50 | Worst rs p95 | Best Atuin p50 | Worst Atuin p95 | Min Speedup | Max Speedup |\n");
         out.push_str("|:---|:---:|:---:|:---:|:---:|:---:|:---:|\n");
 
         for r in scale_results {
@@ -1125,14 +1125,14 @@ fn generate_report(
                 .queries
                 .iter()
                 .filter(|q| q.label != "Empty Query (Reverse-Chrono Dump)")
-                .map(|q| q.xstory.median)
+                .map(|q| q.rs.median)
                 .min()
                 .unwrap_or(Duration::ZERO);
             let x_worst_p95 = r
                 .queries
                 .iter()
                 .filter(|q| q.label != "Empty Query (Reverse-Chrono Dump)")
-                .map(|q| q.xstory.p95)
+                .map(|q| q.rs.p95)
                 .max()
                 .unwrap_or(Duration::ZERO);
 
@@ -1166,7 +1166,7 @@ fn generate_report(
                     .iter()
                     .filter_map(|q| {
                         let a = q.atuin.as_ref()?;
-                        let x_ns = q.xstory.median.as_nanos();
+                        let x_ns = q.rs.median.as_nanos();
                         if x_ns == 0 {
                             return None;
                         }
@@ -1225,7 +1225,7 @@ fn main() {
 
     println!();
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
-    println!("║  xstory — COMPARATIVE BENCHMARK & STRESS TEST vs. ATUIN                    ║");
+    println!("║  rs — COMPARATIVE BENCHMARK & STRESS TEST vs. ATUIN                    ║");
     println!("║  Scales: 100,000 │ 500,000 │ 1,000,000 records                             ║");
     println!("║  Zero hardcoded data. All values measured live.                             ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝");
@@ -1248,19 +1248,19 @@ fn main() {
             .unwrap_or_else(|| "unknown".into());
         println!("✓ Atuin found: {} ({})", bin.display(), ver);
     } else {
-        println!("⚠ Atuin not found in PATH. Running xstory-only benchmarks.");
+        println!("⚠ Atuin not found in PATH. Running rs-only benchmarks.");
     }
     println!();
 
     // ── Binary & Dependency Metrics ──
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let xstory_release = repo_root.join("target/release/xstory");
+    let rs_release = repo_root.join("target/release/rs");
 
     eprintln!("── Measuring binary footprints ──");
-    let mut x_bin_metrics = measure_binary(&xstory_release);
+    let mut x_bin_metrics = measure_binary(&rs_release);
     x_bin_metrics.dep_count = count_cargo_deps(&repo_root);
     eprintln!(
-        "  xstory: {} ({} __TEXT) | {} deps",
+        "  rs: {} ({} __TEXT) | {} deps",
         fmt_bytes_mb(x_bin_metrics.total_bytes),
         fmt_bytes_mb(x_bin_metrics.text_bytes),
         x_bin_metrics.dep_count
@@ -1287,14 +1287,14 @@ fn main() {
 
     // ── Kernel Metrics (cold-start --version) ──
     eprintln!("\n── Collecting kernel/hardware counters (--version, 15 runs) ──");
-    let x_kern = if xstory_release.is_file() {
-        collect_kernel_metrics(&xstory_release, &["--version"], &[])
+    let x_kern = if rs_release.is_file() {
+        collect_kernel_metrics(&rs_release, &["--version"], &[])
     } else {
-        eprintln!("  ⚠ xstory release binary not found. Run `cargo build --release` first.");
+        eprintln!("  ⚠ rs release binary not found. Run `cargo build --release` first.");
         KernelMetrics::default()
     };
     eprintln!(
-        "  xstory: {} instr | {} cyc | IPC {:.2} | RSS {}",
+        "  rs: {} instr | {} cyc | IPC {:.2} | RSS {}",
         fmt_num(x_kern.instructions as usize),
         fmt_num(x_kern.cycles as usize),
         x_kern.ipc(),
@@ -1339,9 +1339,9 @@ fn main() {
             None
         };
 
-        // xstory ingestion benchmark
-        eprintln!("\n  Benchmarking xstory ingestion (N={SAMPLES} samples)...");
-        let (load_stats, throughput) = bench_xstory_load(&tsv_path, sc.count);
+        // rs ingestion benchmark
+        eprintln!("\n  Benchmarking rs ingestion (N={SAMPLES} samples)...");
+        let (load_stats, throughput) = bench_rs_load(&tsv_path, sc.count);
         eprintln!(
             "    p50: {} | p95: {} | throughput: {:.2} GB/s",
             fmt_duration(load_stats.median),
@@ -1358,12 +1358,12 @@ fn main() {
         for qs in QUERY_SUITE {
             eprint!("  Benchmarking: {:<45} ", qs.label);
 
-            // xstory (in-process)
-            let (x_stats, x_matches) = bench_xstory_search(&arena, qs.xstory_query, qs.scope);
-            eprint!("xstory: {} ", fmt_duration(x_stats.median));
+            // rs (in-process)
+            let (x_stats, x_matches) = bench_rs_search(&arena, qs.rs_query, qs.scope);
+            eprint!("rs: {} ", fmt_duration(x_stats.median));
 
             // Atuin (subprocess) — skip empty query (Atuin lists all history)
-            let a_stats = if qs.xstory_query.is_empty() {
+            let a_stats = if qs.rs_query.is_empty() {
                 eprint!("| atuin: (skip empty) ");
                 None
             } else if let (Some(bin), Some(env)) = (&atuin_bin, &atuin_env) {
@@ -1383,8 +1383,8 @@ fn main() {
 
             query_results.push(QueryResult {
                 label: qs.label,
-                xstory: x_stats,
-                xstory_matches: x_matches,
+                rs: x_stats,
+                rs_matches: x_matches,
                 atuin: a_stats,
             });
         }
@@ -1395,8 +1395,8 @@ fn main() {
             raw_mb,
             ram_mb: sc.ram_mb,
             cache_tier: sc.cache_tier,
-            xstory_load: load_stats,
-            xstory_throughput_gb_s: throughput,
+            rs_load: load_stats,
+            rs_throughput_gb_s: throughput,
             queries: query_results,
         });
     }
@@ -1421,7 +1421,7 @@ fn main() {
     println!("┌─────────────────────────────────────────────────────────────────────────────┐");
     println!("│                         VERIFICATION SUMMARY                                │");
     println!("├───────────┬──────────────┬──────────────┬──────────────┬─────────────────────┤");
-    println!("│   Scale   │ xstory p50   │ Atuin p50    │  Speedup     │ 120Hz SLA           │");
+    println!("│   Scale   │ rs p50   │ Atuin p50    │  Speedup     │ 120Hz SLA           │");
     println!("├───────────┼──────────────┼──────────────┼──────────────┼─────────────────────┤");
 
     for r in &scale_results {
@@ -1438,7 +1438,7 @@ fn main() {
                 .atuin
                 .as_ref()
                 .map(|a| {
-                    let x_ns = q.xstory.median.as_nanos();
+                    let x_ns = q.rs.median.as_nanos();
                     if x_ns == 0 {
                         "∞".into()
                     } else {
@@ -1446,9 +1446,9 @@ fn main() {
                     }
                 })
                 .unwrap_or_else(|| "—".into());
-            let sla = if q.xstory.p95.as_secs_f64() < 0.00833 {
+            let sla = if q.rs.p95.as_secs_f64() < 0.00833 {
                 "✓ PASS (120Hz)"
-            } else if q.xstory.p95.as_secs_f64() < 0.01666 {
+            } else if q.rs.p95.as_secs_f64() < 0.01666 {
                 "✓ PASS (60Hz)"
             } else {
                 "✗ FAIL"
@@ -1457,7 +1457,7 @@ fn main() {
             println!(
                 "│ {:>9} │ {:>12} │ {:>12} │ {:>12} │ {:>19} │",
                 fmt_num(r.count),
-                fmt_duration(q.xstory.median),
+                fmt_duration(q.rs.median),
                 atuin_str,
                 speedup_str,
                 sla

@@ -254,7 +254,7 @@ fn read_stream_line(stream: &mut InStream, buf: &mut Vec<u8>) -> std::io::Result
     }
 }
 
-/// Export xstory history to a file path (0600) or stdout, respecting Scope.
+/// Export rs history to a file path (0600) or stdout, respecting Scope.
 ///
 /// # Errors
 /// Returns `Error::Io` on read or write failure.
@@ -357,7 +357,7 @@ pub fn export_history_from_path(
     Ok(())
 }
 
-/// Import shell history into xstory.
+/// Import shell history into rs.
 ///
 /// # Errors
 /// Returns `Error::Io` or `Error::InvalidArgs` on failure.

@@ -600,9 +600,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "1.2.4"
+version = "1.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1788edb87fdc09c7e26304471e2f5be8cdefb1b6930d6e3985fc02ff53bf86ee"
+checksum = "20521a903f02b0a573cd6840e9d0a5a0cc043d361fe924092cd70f8556cc9c4a"
 dependencies = [
  "libc",
  "log",
@@ -917,6 +917,25 @@ name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+
+[[package]]
+name = "rs"
+version = "0.0.0"
+dependencies = [
+ "assert_cmd",
+ "criterion",
+ "crossterm",
+ "memchr",
+ "memmap2",
+ "nucleo-matcher",
+ "predicates",
+ "ratatui",
+ "rayon",
+ "tempfile",
+ "tree-sitter",
+ "tree-sitter-bash",
+ "unicode-width",
+]
 
 [[package]]
 name = "rustc_version"
@@ -1319,25 +1338,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
-]
-
-[[package]]
-name = "xstory"
-version = "0.1.7"
-dependencies = [
- "assert_cmd",
- "criterion",
- "crossterm",
- "memchr",
- "memmap2",
- "nucleo-matcher",
- "predicates",
- "ratatui",
- "rayon",
- "tempfile",
- "tree-sitter",
- "tree-sitter-bash",
- "unicode-width",
 ]
 
 [[package]]
