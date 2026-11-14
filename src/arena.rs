@@ -604,20 +604,19 @@ impl Config {
         {
             cfg.history_path = PathBuf::from(val);
         }
-        if let Ok(val) =
-            std::env::var("RS_SCROLL_OFF").or_else(|_| std::env::var("XSTORY_SCROLL_OFF"))
+        if let Ok(val) = std::env::var("RS_SCROLL_OFF").or_else(|_| std::env::var("XC_SCROLL_OFF"))
             && let Ok(n) = val.parse::<u16>()
         {
             cfg.scroll_off = n;
         }
-        if let Ok(val) = std::env::var("RS_PREVIEW").or_else(|_| std::env::var("XSTORY_PREVIEW")) {
+        if let Ok(val) = std::env::var("RS_PREVIEW").or_else(|_| std::env::var("XC_PREVIEW")) {
             if val.eq_ignore_ascii_case("fixed") {
                 cfg.preview_mode = PreviewMode::Fixed;
             } else if val.eq_ignore_ascii_case("dynamic") {
                 cfg.preview_mode = PreviewMode::Dynamic;
             }
         }
-        if let Ok(val) = std::env::var("RS_THEME").or_else(|_| std::env::var("XSTORY_THEME"))
+        if let Ok(val) = std::env::var("RS_THEME").or_else(|_| std::env::var("XC_THEME"))
             && let Ok(t) = val.parse::<Theme>()
         {
             cfg.theme = Some(t);
@@ -630,7 +629,7 @@ impl Config {
             |_| PathBuf::from("/tmp/rs_history.tsv"),
             |h| {
                 let primary = PathBuf::from(&h).join(".local/share/xc/history.tsv");
-                let legacy = PathBuf::from(&h).join(".local/share/xstory/history.tsv");
+                let legacy = PathBuf::from(&h).join(".local/share/xc/history.tsv");
                 if !primary.exists() && legacy.exists() {
                     legacy
                 } else {
@@ -655,7 +654,7 @@ impl Config {
     fn config_file_path() -> Option<PathBuf> {
         let home = std::env::var("HOME").ok()?;
         let primary = PathBuf::from(&home).join(".config/xc/config");
-        let legacy = PathBuf::from(&home).join(".config/xstory/config");
+        let legacy = PathBuf::from(&home).join(".config/xc/config");
         if !primary.exists() && legacy.exists() {
             Some(legacy)
         } else {
@@ -758,7 +757,7 @@ mod tests {
 
     #[test]
     fn missing_file_empty_arena() {
-        let arena = Arena::load(Path::new("/nonexistent/xstory_test_no_file"), None).expect("load");
+        let arena = Arena::load(Path::new("/nonexistent/xc_test_no_file"), None).expect("load");
         assert!(arena.is_empty());
         assert_eq!(arena.global_indices.as_slice(), &[]);
     }
@@ -945,7 +944,7 @@ mod tests {
     fn config_defaults() {
         unsafe {
             std::env::remove_var("RS_HISTORY_PATH");
-            std::env::remove_var("XSTORY_SCROLL_OFF");
+            std::env::remove_var("XC_SCROLL_OFF");
         }
         let cfg = Config::load();
         assert_eq!(cfg.scroll_off, 4);

@@ -1,13 +1,13 @@
-# Contributing to xstory
+# Contributing to xc
 
-Thank you for considering contributing to **xstory**! This project thrives on community involvement, and we appreciate your time and effort.
+Thank you for considering contributing to **xc**! This project thrives on community involvement, and we appreciate your time and effort.
 
 ## Add an entry to the changelog
 
-Keeping the `CHANGELOG.md` file up-to-date makes the release process much easier and helps get your changes into a new **xstory** release faster. However, not every change requires a changelog entry.
+Keeping the `CHANGELOG.md` file up-to-date makes the release process much easier and helps get your changes into a new **xc** release faster. However, not every change requires a changelog entry.
 
 **Please update the changelog if your contribution contains changes regarding any of the following:**
-- The behavior of **xstory** (new commands, flags, or logic).
+- The behavior of **xc** (new commands, flags, or logic).
 - History recording, arena storage, or search matching logic.
 - The build system, linting, or CI workflows.
 - Performance improvements or bug fixes.
@@ -50,4 +50,4 @@ cargo nextest run
 ```
 
 ## Community and Communication
-If you have questions, feel free to reach out via GitHub Issues. We aim to keep **xstory** the fastest and most transparent shell history engine.
+If you have questions, feel free to reach out via GitHub Issues. We aim to keep **xc** the fastest and most transparent shell history engine.

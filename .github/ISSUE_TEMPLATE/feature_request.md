@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Propose a functional enhancement or architectural feature for xstory.
+about: Propose a functional enhancement or architectural feature for xc.
 title: "[FEATURE] "
 labels: ["enhancement"]
 assignees: ''
@@ -12,7 +12,7 @@ assignees: ''
 ## Proposed Solution & CLI UX
 <!-- Describe how the CLI syntax, flag, or search behavior should look. -->
 ```console
-$ xstory ...
+$ xc ...
 ```
 
 ## Architectural Considerations

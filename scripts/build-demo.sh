@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# xstory - Full Production Asset Automation Pipeline
-# 1. Optimizes 4K Retina Banner (assets/images/xstory-banner.jpg / .png)
+# xc - Full Production Asset Automation Pipeline
+# 1. Optimizes 4K Retina Banner (assets/images/xc-banner.jpg / .png)
 # 2. Encodes Master MP4 from raw screen recording (.mov)
-# 3. Compiles High-Fidelity Bayer Dithered GIF (assets/gif/xstory-preview.gif)
+# 3. Compiles High-Fidelity Bayer Dithered GIF (assets/gif/xc-preview.gif)
 # 4. Compresses payloads via gifsicle / sips
 # ==============================================================================
 
@@ -16,7 +16,7 @@ OUTPUT_DIR="assets"
 mkdir -p "$OUTPUT_DIR/gif" "$OUTPUT_DIR/video" "$OUTPUT_DIR/images"
 
 echo "=========================================================="
-echo "  xstory Production Assets Pipeline (Full Automation)     "
+echo "  xc Production Assets Pipeline (Full Automation)     "
 echo "=========================================================="
 
 # ── 1. Banner Processing (4K Retina) ───────────────────────────
@@ -24,17 +24,17 @@ echo ""
 echo "── [1/3] Processing 4K Retina Banner ──"
 
 BANNER_SRC=""
-# Auto-detect existing banner files (handling typo xstoy -> xstory)
+# Auto-detect existing banner files (handling typo xstoy -> xc)
 if [[ -f "$OUTPUT_DIR/images/xstoy-banner.jpg" ]]; then
-    mv -f "$OUTPUT_DIR/images/xstoy-banner.jpg" "$OUTPUT_DIR/images/xstory-banner.jpg"
-    BANNER_SRC="$OUTPUT_DIR/images/xstory-banner.jpg"
-elif [[ -f "$OUTPUT_DIR/images/xstory-banner.jpg" ]]; then
-    BANNER_SRC="$OUTPUT_DIR/images/xstory-banner.jpg"
-elif [[ -f "$OUTPUT_DIR/images/xstory-banner.png" ]]; then
-    BANNER_SRC="$OUTPUT_DIR/images/xstory-banner.png"
+    mv -f "$OUTPUT_DIR/images/xstoy-banner.jpg" "$OUTPUT_DIR/images/xc-banner.jpg"
+    BANNER_SRC="$OUTPUT_DIR/images/xc-banner.jpg"
+elif [[ -f "$OUTPUT_DIR/images/xc-banner.jpg" ]]; then
+    BANNER_SRC="$OUTPUT_DIR/images/xc-banner.jpg"
+elif [[ -f "$OUTPUT_DIR/images/xc-banner.png" ]]; then
+    BANNER_SRC="$OUTPUT_DIR/images/xc-banner.png"
 elif [[ -f "$OUTPUT_DIR/images/xstoy-banner.png" ]]; then
-    mv -f "$OUTPUT_DIR/images/xstoy-banner.png" "$OUTPUT_DIR/images/xstory-banner.png"
-    BANNER_SRC="$OUTPUT_DIR/images/xstory-banner.png"
+    mv -f "$OUTPUT_DIR/images/xstoy-banner.png" "$OUTPUT_DIR/images/xc-banner.png"
+    BANNER_SRC="$OUTPUT_DIR/images/xc-banner.png"
 fi
 
 if [[ -n "$BANNER_SRC" && -f "$BANNER_SRC" ]]; then
@@ -55,25 +55,25 @@ echo "── [2/3] Processing Screen Recording (.mov -> .mp4 + .gif) ──"
 INPUT_VIDEO="${1:-}"
 if [[ -z "$INPUT_VIDEO" ]]; then
     # Auto-detect video source in assets/video/ or current directory
-    if [[ -f "$OUTPUT_DIR/video/xstory.mov" ]]; then
-        INPUT_VIDEO="$OUTPUT_DIR/video/xstory.mov"
-    elif [[ -f "$OUTPUT_DIR/video/xstory-demo.mov" ]]; then
-        INPUT_VIDEO="$OUTPUT_DIR/video/xstory-demo.mov"
+    if [[ -f "$OUTPUT_DIR/video/xc.mov" ]]; then
+        INPUT_VIDEO="$OUTPUT_DIR/video/xc.mov"
+    elif [[ -f "$OUTPUT_DIR/video/xc-demo.mov" ]]; then
+        INPUT_VIDEO="$OUTPUT_DIR/video/xc-demo.mov"
     else
         INPUT_VIDEO=$(ls -t "$OUTPUT_DIR/video/"*.mov *.mov ~/Desktop/Screen\ Recording*.mov 2>/dev/null | head -n 1 || true)
     fi
 fi
 
 if [[ -z "$INPUT_VIDEO" || ! -f "$INPUT_VIDEO" ]]; then
-    echo "Error: No screen recording found. Place xstory.mov in $OUTPUT_DIR/video/ or pass file as argument."
+    echo "Error: No screen recording found. Place xc.mov in $OUTPUT_DIR/video/ or pass file as argument."
     exit 1
 fi
 
 echo "Source video: $INPUT_VIDEO"
 
-MP4_OUT="$OUTPUT_DIR/video/xstory-demo.mp4"
-GIF_RAW="$OUTPUT_DIR/gif/xstory-raw.gif"
-GIF_FINAL="$OUTPUT_DIR/gif/xstory-preview.gif"
+MP4_OUT="$OUTPUT_DIR/video/xc-demo.mp4"
+GIF_RAW="$OUTPUT_DIR/gif/xc-raw.gif"
+GIF_FINAL="$OUTPUT_DIR/gif/xc-preview.gif"
 PALETTE_PNG="$OUTPUT_DIR/palette.png"
 
 START_OFFSET="${2:-}"
@@ -119,6 +119,6 @@ fi
 # ── 3. Summary & Verification ──────────────────────────────────
 echo ""
 echo "── [3/3] Production Artifacts Ready ──"
-ls -lh "$OUTPUT_DIR"/images/xstory-banner.* "$MP4_OUT" "$GIF_FINAL" 2>/dev/null || true
+ls -lh "$OUTPUT_DIR"/images/xc-banner.* "$MP4_OUT" "$GIF_FINAL" 2>/dev/null || true
 echo ""
 echo "✓ Pipeline completed successfully."

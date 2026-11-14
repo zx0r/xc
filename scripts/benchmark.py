@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Empirical Performance Benchmark: xstory vs Atuin
+Empirical Performance Benchmark: xc vs Atuin
 Compares binary footprints, dependencies, kernel counters, and CLI latency.
 """
 
@@ -162,7 +162,7 @@ def run_hyperfine_bench(cmd_a, cmd_b, name, warmup=10, runs=150):
         "--export-json",
         json_path,
         "-n",
-        "xstory",
+        "xc",
         cmd_a,
         "-n",
         "atuin",
@@ -197,18 +197,18 @@ def run_hyperfine_bench(cmd_a, cmd_b, name, warmup=10, runs=150):
 def main():
     repo_root = Path(__file__).resolve().parent.parent
 
-    parser = argparse.ArgumentParser(description="xstory vs Atuin Benchmark Suite")
+    parser = argparse.ArgumentParser(description="xc vs Atuin Benchmark Suite")
     parser.add_argument(
-        "--xstory-dir",
+        "--xc-dir",
         type=Path,
-        default=Path(os.environ.get("XSTORY_DIR", repo_root)),
-        help="Path to xstory repository directory",
+        default=Path(os.environ.get("XC_DIR", repo_root)),
+        help="Path to xc repository directory",
     )
     parser.add_argument(
-        "--xstory-bin",
+        "--xc-bin",
         type=Path,
         default=None,
-        help="Path to compiled xstory release executable",
+        help="Path to compiled xc release executable",
     )
     parser.add_argument(
         "--atuin-dir",
@@ -232,21 +232,21 @@ def main():
     )
     args = parser.parse_args()
 
-    xstory_dir = args.xstory_dir.resolve()
-    xstory_src = xstory_dir / "src"
+    xc_dir = args.xc_dir.resolve()
+    xc_src = xc_dir / "src"
 
-    # Resolve xstory binary
-    if args.xstory_bin:
-        xstory_bin = args.xstory_bin.resolve()
+    # Resolve xc binary
+    if args.xc_bin:
+        xc_bin = args.xc_bin.resolve()
     else:
         candidates = [
-            xstory_dir / "target" / "release" / "xstory",
-            Path.home() / ".local" / "bin" / "xstory",
+            xc_dir / "target" / "release" / "xc",
+            Path.home() / ".local" / "bin" / "xc",
         ]
-        which_xstory = shutil.which("xstory")
-        if which_xstory:
-            candidates.insert(0, Path(which_xstory))
-        xstory_bin = next((c for c in candidates if c.is_file()), candidates[0])
+        which_xc = shutil.which("xc")
+        if which_xc:
+            candidates.insert(0, Path(which_xc))
+        xc_bin = next((c for c in candidates if c.is_file()), candidates[0])
 
     # Resolve atuin directory and binary
     atuin_dir = args.atuin_dir.resolve()
@@ -258,38 +258,38 @@ def main():
         which_atuin = shutil.which("atuin")
         atuin_bin = Path(which_atuin) if which_atuin else Path("/usr/local/bin/atuin")
 
-    print(f"xstory dir: {xstory_dir}")
-    print(f"xstory bin: {xstory_bin}")
+    print(f"xc dir: {xc_dir}")
+    print(f"xc bin: {xc_bin}")
     print(f"atuin  dir: {atuin_dir} (exists: {atuin_dir.is_dir()})")
     print(f"atuin  bin: {atuin_bin} (exists: {atuin_bin.is_file()})")
 
-    if not xstory_bin.is_file():
-        print(f"Error: xstory binary not found at {xstory_bin}. Run `cargo build --release` first.", file=sys.stderr)
+    if not xc_bin.is_file():
+        print(f"Error: xc binary not found at {xc_bin}. Run `cargo build --release` first.", file=sys.stderr)
         sys.exit(1)
 
     print("\n=== 1. Measuring SLOC ===")
-    x_sloc = count_sloc(xstory_src)
+    x_sloc = count_sloc(xc_src)
     a_sloc = count_sloc(atuin_src)
-    print(f"xstory: {x_sloc['code']} code lines across {x_sloc['files']} files")
+    print(f"xc: {x_sloc['code']} code lines across {x_sloc['files']} files")
     print(f"atuin : {a_sloc['code']} code lines across {a_sloc['files']} files")
 
     print("\n=== 2. Measuring Binary Sizes & Mach-O Sections ===")
-    x_bin = get_binary_size(xstory_bin)
+    x_bin = get_binary_size(xc_bin)
     a_bin = get_binary_size(atuin_bin)
-    print(f"xstory bin: {x_bin['total_mb']:.2f} MB (TEXT: {x_bin['text_mb']:.2f} MB)")
+    print(f"xc bin: {x_bin['total_mb']:.2f} MB (TEXT: {x_bin['text_mb']:.2f} MB)")
     print(f"atuin bin : {a_bin['total_mb']:.2f} MB (TEXT: {a_bin['text_mb']:.2f} MB)")
 
     print("\n=== 3. Measuring Dependency Graphs ===")
-    x_deps = get_dependency_count(xstory_dir)
+    x_deps = get_dependency_count(xc_dir)
     a_deps = get_dependency_count(atuin_dir)
-    print(f"xstory dependencies: {x_deps} crates")
+    print(f"xc dependencies: {x_deps} crates")
     print(f"atuin dependencies : {a_deps} crates")
 
     print("\n=== 4. Measuring Kernel Syscalls & Hardware Counters ===")
-    x_kern = get_kernel_metrics(xstory_bin, ["--version"], runs=15)
+    x_kern = get_kernel_metrics(xc_bin, ["--version"], runs=15)
     a_kern = get_kernel_metrics(atuin_bin, ["--version"], runs=15)
     print(
-        f"xstory retired: {x_kern['instructions']:,} instr | cycles: {x_kern['cycles']:,} | IPC: {x_kern['ipc']:.2f} | RSS: {x_kern['max_rss'] / (1024*1024):.2f} MB"
+        f"xc retired: {x_kern['instructions']:,} instr | cycles: {x_kern['cycles']:,} | IPC: {x_kern['ipc']:.2f} | RSS: {x_kern['max_rss'] / (1024*1024):.2f} MB"
     )
     print(
         f"atuin  retired: {a_kern['instructions']:,} instr | cycles: {a_kern['cycles']:,} | IPC: {a_kern['ipc']:.2f} | RSS: {a_kern['max_rss'] / (1024*1024):.2f} MB"
@@ -301,15 +301,15 @@ def main():
 
     print(f"\n=== 5. Running Hyperfine Latency Benchmarks (Warmup {args.warmup}, Runs {args.runs}) ===")
     hf_version = run_hyperfine_bench(
-        f"{xstory_bin} --version", f"{atuin_bin} --version", "version", warmup=args.warmup, runs=args.runs
+        f"{xc_bin} --version", f"{atuin_bin} --version", "version", warmup=args.warmup, runs=args.runs
     )
     hf_help = run_hyperfine_bench(
-        f"{xstory_bin} --help", f"{atuin_bin} --help", "help", warmup=args.warmup, runs=args.runs
+        f"{xc_bin} --help", f"{atuin_bin} --help", "help", warmup=args.warmup, runs=args.runs
     )
 
-    test_tsv = "/tmp/bench_xstory.tsv"
+    test_tsv = "/tmp/bench_xc.tsv"
     hf_record = run_hyperfine_bench(
-        f"{xstory_bin} -H {test_tsv} record -c /tmp -d 50 -e 0 'git status'",
+        f"{xc_bin} -H {test_tsv} record -c /tmp -d 50 -e 0 'git status'",
         f"{atuin_bin} history start 'git status' >/dev/null",
         "record",
         warmup=args.warmup,
@@ -327,15 +327,15 @@ def main():
     x_dp = x_deps or 1
 
     table_lines = [
-        "| Metric / Dimension | Atuin | xstory | Delta / Ratio | Mathematical Significance |",
+        "| Metric / Dimension | Atuin | xc | Delta / Ratio | Mathematical Significance |",
         "|:---|:---:|:---:|:---:|:---|",
         f"| **Executable Binary Size** | {a_mb:.2f} MB | {x_mb:.2f} MB | **{a_mb / x_mb:.1f}× smaller** | Minimalist Mach-O footprint |",
         f"| **Mach-O `__TEXT` Section** | {a_text:.2f} MB | {x_text:.2f} MB | **{a_text / x_text:.1f}× smaller** | Executable machine code density |",
         f"| **Source Code (Rust SLOC)** | {a_code:,} lines | {x_code:,} lines | **{a_code / x_code:.1f}× leaner** | Auditability & zero bloated abstractions |",
         f"| **Dependency Graph** | {a_dp} crates | {x_dp} crates | **{a_dp / x_dp:.1f}× fewer** | Attack surface & build time reduction |",
-        f"| **Cold-Start Latency (`--version`)** | {hf_version['atuin']['mean']:.2f} ± {hf_version['atuin']['stddev']:.2f} ms | {hf_version['xstory']['mean']:.2f} ± {hf_version['xstory']['stddev']:.2f} ms | **{hf_version['atuin']['mean'] / max(hf_version['xstory']['mean'], 0.001):.1f}× faster** | Cold process spawn latency |",
-        f"| **CLI Help Latency (`--help`)** | {hf_help['atuin']['mean']:.2f} ± {hf_help['atuin']['stddev']:.2f} ms | {hf_help['xstory']['mean']:.2f} ± {hf_help['xstory']['stddev']:.2f} ms | **{hf_help['atuin']['mean'] / max(hf_help['xstory']['mean'], 0.001):.1f}× faster** | Instantaneous responsiveness |",
-        f"| **Shell Hook Append (Hot Path)** | {hf_record['atuin']['mean']:.2f} ± {hf_record['atuin']['stddev']:.2f} ms | {hf_record['xstory']['mean']:.2f} ± {hf_record['xstory']['stddev']:.2f} ms | **{hf_record['atuin']['mean'] / max(hf_record['xstory']['mean'], 0.001):.1f}× faster** | Sub-millisecond prompt latency |",
+        f"| **Cold-Start Latency (`--version`)** | {hf_version['atuin']['mean']:.2f} ± {hf_version['atuin']['stddev']:.2f} ms | {hf_version['xc']['mean']:.2f} ± {hf_version['xc']['stddev']:.2f} ms | **{hf_version['atuin']['mean'] / max(hf_version['xc']['mean'], 0.001):.1f}× faster** | Cold process spawn latency |",
+        f"| **CLI Help Latency (`--help`)** | {hf_help['atuin']['mean']:.2f} ± {hf_help['atuin']['stddev']:.2f} ms | {hf_help['xc']['mean']:.2f} ± {hf_help['xc']['stddev']:.2f} ms | **{hf_help['atuin']['mean'] / max(hf_help['xc']['mean'], 0.001):.1f}× faster** | Instantaneous responsiveness |",
+        f"| **Shell Hook Append (Hot Path)** | {hf_record['atuin']['mean']:.2f} ± {hf_record['atuin']['stddev']:.2f} ms | {hf_record['xc']['mean']:.2f} ± {hf_record['xc']['stddev']:.2f} ms | **{hf_record['atuin']['mean'] / max(hf_record['xc']['mean'], 0.001):.1f}× faster** | Sub-millisecond prompt latency |",
         f"| **Max Resident Set Size (RSS)** | {a_kern['max_rss'] / (1024*1024):.2f} MB | {x_kern['max_rss'] / (1024*1024):.2f} MB | **{(a_kern['max_rss'] / max(x_kern['max_rss'], 1)):.1f}× lighter** | Zero memory pressure on shell sessions |",
         f"| **Peak Memory Footprint** | {a_kern['peak_mem'] / (1024*1024):.2f} MB | {x_kern['peak_mem'] / (1024*1024):.2f} MB | **{(a_kern['peak_mem'] / max(x_kern['peak_mem'], 1)):.1f}× lighter** | Kernel Mach allocator efficiency |",
         f"| **Kernel Page Reclaims (Faults)** | {a_kern['page_reclaims']:,} | {x_kern['page_reclaims']:,} | **{(a_kern['page_reclaims'] / max(x_kern['page_reclaims'], 1)):.1f}× fewer** | Kernel VM subsystem trap minimization |",
@@ -348,10 +348,10 @@ def main():
     print("\n=== GENERATED TABLE ===")
     print(table_md)
 
-    out_file = args.output_md or (xstory_dir / "BENCHMARK_ATUIN.md")
+    out_file = args.output_md or (xc_dir / "BENCHMARK_ATUIN.md")
     with open(out_file, "w", encoding="utf-8") as fh:
         fh.write(
-            f"# Empirical Benchmark: xstory vs Atuin\n\nGenerated with `hyperfine` (warmup={args.warmup}, runs={args.runs}) and macOS Mach kernel instrumentation (`/usr/bin/time -l`).\n\n{table_md}\n"
+            f"# Empirical Benchmark: xc vs Atuin\n\nGenerated with `hyperfine` (warmup={args.warmup}, runs={args.runs}) and macOS Mach kernel instrumentation (`/usr/bin/time -l`).\n\n{table_md}\n"
         )
     print(f"\nReport written to {out_file}")
 

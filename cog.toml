@@ -18,7 +18,7 @@ post_bump_hooks = [
     "git push origin {{version_tag}}",
 ]
 
-# Enforced commit scopes for xstory architecture
+# Enforced commit scopes for xc architecture
 scopes = [
     "arena",
     "audit",
@@ -68,4 +68,4 @@ path = "CHANGELOG.md"
 template = "remote"
 remote = "github.com"
 owner = "zx0r"
-repository = "xstory"
+repository = "xc"

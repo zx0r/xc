@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Multi-platform release automation via `cargo-dist` and GitHub Actions.
-- Automated Homebrew tap formula publishing for `Xstory`.
+- Automated Homebrew tap formula publishing for `Xc`.
 - Renovate configuration for dependency updates.
 - Dual licensing (`MIT` / `Apache-2.0`) and `CONTRIBUTING.md`.
 
@@ -59,18 +59,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-10-30
 
 ### Added
-- Initial release of **xstory** &mdash; a minimalist, high-throughput Unix shell history engine.
+- Initial release of **xc** &mdash; a minimalist, high-throughput Unix shell history engine.
 - Instant, sub-millisecond full-text search with interactive Ratatui TUI picker.
 - Zero-allocation memory-mapped storage arena for high-performance command history.
 - Seamless Bash, Zsh, and Fish shell hooks for transparent execution time and exit code tracking.
 - Cross-platform distribution pipeline powered by `cargo-dist` with Homebrew tap integration.
 
-[0.1.7]: https://github.com/zx0r/xstory/compare/v0.1.6...v0.1.7
-[0.1.6]: https://github.com/zx0r/xstory/compare/v0.1.5...v0.1.6
-[0.1.5]: https://github.com/zx0r/xstory/compare/v0.1.4...v0.1.5
-[0.1.4]: https://github.com/zx0r/xstory/compare/v0.1.3...v0.1.4
-[0.1.3]: https://github.com/zx0r/xstory/compare/v0.1.2...v0.1.3
-[0.1.2]: https://github.com/zx0r/xstory/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/zx0r/xstory/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/zx0r/xstory/releases/tag/v0.1.0
+[0.1.7]: https://github.com/zx0r/xc/compare/v0.1.6...v0.1.7
+[0.1.6]: https://github.com/zx0r/xc/compare/v0.1.5...v0.1.6
+[0.1.5]: https://github.com/zx0r/xc/compare/v0.1.4...v0.1.5
+[0.1.4]: https://github.com/zx0r/xc/compare/v0.1.3...v0.1.4
+[0.1.3]: https://github.com/zx0r/xc/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/zx0r/xc/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/zx0r/xc/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/zx0r/xc/releases/tag/v0.1.0
 

@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a reproducible defect or unexpected behavior in xstory.
+about: Report a reproducible defect or unexpected behavior in xc.
 title: "[BUG] "
 labels: ["bug"]
 assignees: ''
@@ -11,23 +11,23 @@ assignees: ''
 
 ## Reproduction Steps
 1. Shell: `bash` / `zsh` / `fish`
-2. Execute command: `xstory <args>`
+2. Execute command: `xc <args>`
 3. Observe error: `...`
 
 ## Expected Behavior
-<!-- What you expected xstory to do. -->
+<!-- What you expected xc to do. -->
 
 ## Diagnostic Environment
 Please run the following commands and paste the exact output:
 
 ```console
-$ xstory --version
+$ xc --version
 $ echo "$SHELL"
 $ uname -a
 ```
 
 ## Relevant Configuration
-<!-- Include ~/.config/xstory/config.toml if applicable. -->
+<!-- Include ~/.config/xc/config.toml if applicable. -->
 ```toml
 ```
 

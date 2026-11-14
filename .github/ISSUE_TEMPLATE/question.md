@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Ask a question regarding xstory architecture, shell hooks, or configuration.
+about: Ask a question regarding xc architecture, shell hooks, or configuration.
 title: "[QUESTION] "
 labels: ["question"]
 assignees: ''
@@ -14,4 +14,4 @@ assignees: ''
 
 ---
 > [!TIP]
-> For general discussions, shell hook tricks, or community Q&A, you can also join the [GitHub Discussions](https://github.com/zx0r/xstory/discussions).
+> For general discussions, shell hook tricks, or community Q&A, you can also join the [GitHub Discussions](https://github.com/zx0r/xc/discussions).
