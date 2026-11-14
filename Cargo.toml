@@ -1,12 +1,12 @@
 [package]
-name = "rs"
+name = "xc"
 version = "0.0.0"
 edition = "2024"
 resolver = "3"
 rust-version = "1.99.0"
-repository = "https://github.com/zx0r/rs"
+repository = "https://github.com/zx0r/xc"
 description = "Ultra fast shell history engine"
-homepage = "https://github.com/zx0r/rs#readme"
+homepage = "https://github.com/zx0r/xc#readme"
 authors = ["zx0r <admin@xxxx.dev>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"

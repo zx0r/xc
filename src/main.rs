@@ -1,15 +1,15 @@
-use rs::arena;
-use rs::error::Error;
-use rs::record;
-use rs::tui;
 use std::io::Write;
 use std::path::PathBuf;
+use xc::arena;
+use xc::error::Error;
+use xc::record;
+use xc::tui;
 
 // ── Shell Hooks ──────────────────────────────────────────────────
 
 const BASH_HOOK: &str = r#"[[ $- == *i* ]] || return 0
 [[ -n "${RS_DISABLE-}" || -n "${RS_DISABLE-}" ]] && return 0
-command -v rs >/dev/null 2>&1 || return 0
+command -v xc >/dev/null 2>&1 || return 0
 
 __rs_init() {
     local -i __rs_last_histcmd=0
@@ -46,8 +46,8 @@ __rs_init() {
                 dur=$(( dur_s * 1000 ))
             fi
 
-            if [[ "$__rs_cmd" != [[:space:]]* && "$__rs_cmd" != "__rs"* ]]; then
-                printf '%s' "$__rs_cmd" | rs record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
+            if [[ "$__xc_cmd" != [[:space:]]* && "$__xc_cmd" != "__rs"* ]]; then
+                printf '%s' "$__xc_cmd" | xc record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
             fi
             __rs_cmd=""
             unset __rs_start_time
@@ -75,7 +75,7 @@ __rs_init() {
 
     __rs_search_dispatch() {
         local selected ret
-        selected=$(rs -- "$READLINE_LINE")
+        selected=$(xc -- "$READLINE_LINE")
         ret=$?
         if [[ $ret -eq 0 && -n "$selected" ]]; then
             READLINE_LINE="$selected"
@@ -102,7 +102,7 @@ unset -f __rs_init
 
 const ZSH_HOOK: &str = r#"[[ -o interactive ]] || return 0
 [[ -n "${RS_DISABLE-}" || -n "${RS_DISABLE-}" ]] && return 0
-command -v rs >/dev/null 2>&1 || return 0
+command -v xc >/dev/null 2>&1 || return 0
 
 zmodload zsh/datetime 2>/dev/null
 autoload -Uz add-zsh-hook
@@ -117,12 +117,12 @@ __rs_preexec() {
 
 __rs_precmd() {
     local exit_code=$?
-    if [[ -n "$__rs_cmd" ]]; then
-        if [[ "$__rs_cmd" != [[:space:]]* ]]; then
+    if [[ -n "$__xc_cmd" ]]; then
+        if [[ "$__xc_cmd" != [[:space:]]* ]]; then
             local -F now=$EPOCHREALTIME
             local -i dur=$(( (now - __rs_start_time) * 1000 ))
             (( dur < 0 )) && dur=0
-            print -rn -- "$__rs_cmd" | rs record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
+            print -rn -- "$__xc_cmd" | xc record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
         fi
         __rs_cmd=""
         __rs_start_time=0
@@ -136,7 +136,7 @@ __rs_widget() {
     emulate -L zsh
     zle -I
     local selected ret
-    selected=$(rs -- "$BUFFER")
+    selected=$(xc -- "$BUFFER")
     ret=$?
     if [[ ($ret -eq 0 || $ret -eq 2) && -n "$selected" ]]; then
         BUFFER="$selected"
@@ -169,7 +169,7 @@ fi
 
 const FISH_HOOK: &str = r#"status is-interactive; or return 0
 test -n "$RS_DISABLE" -o -n "$RS_DISABLE"; and return 0
-command -q rs; or return 0
+command -q xc; or return 0
 
 function __rs_postexec --on-event fish_postexec
     set -l exit_code $status
@@ -181,11 +181,11 @@ function __rs_postexec --on-event fish_postexec
     end
     set -l dur 0
     test -n "$CMD_DURATION"; and set dur $CMD_DURATION
-    printf '%s' "$argv[1]" | rs record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
+    printf '%s' "$argv[1]" | xc record --stdin --exit="$exit_code" --duration="$dur" --cwd="$PWD" >/dev/null 2>&1
 end
 
 function __rs_search
-    set -l selected (rs -- (commandline -b) | string collect)
+    set -l selected (xc -- (commandline -b) | string collect)
     set -l ret $pipestatus[1]
     if test $ret -eq 0 -a -n "$selected"
         commandline -r -- "$selected"
@@ -482,7 +482,7 @@ fn parse_args(args: &[String]) -> Result<Cli, Error> {
             let extra = rest.get(2).map(String::as_str);
             if rest.len() > 3 || extra.is_some_and(|p| p.starts_with('-') && p != "-") {
                 return Err(Error::InvalidArgs(
-                    "usage: rs history <import|export> [path]",
+                    "usage: xc history <import|export> [path]",
                 ));
             }
             match sub {
@@ -495,7 +495,7 @@ fn parse_args(args: &[String]) -> Result<Cli, Error> {
                 Some("-h" | "--help") => Action::Help(Some("history")),
                 _ => {
                     return Err(Error::InvalidArgs(
-                        "usage: rs history <import|export> [path]",
+                        "usage: xc history <import|export> [path]",
                     ));
                 }
             }
@@ -591,7 +591,7 @@ fn print_help(topic: Option<&str>) {
         Some("init") => {
             let _ = out.write_all(
                 b"Initialize shell integration hook\n\n\
-Usage: rs init <SHELL>\n\n\
+Usage: xc init <SHELL>\n\n\
 Arguments:\n  \
   <SHELL>  Target shell environment (supported: bash, zsh, fish)\n\n\
 Options:\n  \
@@ -601,7 +601,7 @@ Options:\n  \
         Some("history") => {
             let _ = out.write_all(
                 b"Import or export history logs\n\n\
-Usage: rs history <COMMAND> [PATH]\n\n\
+Usage: xc history <COMMAND> [PATH]\n\n\
 Commands:\n  \
   import  Import history from external shell history file (zsh, bash, fish)\n  \
   export  Export deduplicated history database to TSV\n\n\
@@ -614,7 +614,7 @@ Options:\n  \
         Some("record") => {
             let _ = out.write_all(
                 b"Record command execution into history log\n\n\
-Usage: rs record [OPTIONS] [--] <COMMAND>...\n\n\
+Usage: xc record [OPTIONS] [--] <COMMAND>...\n\n\
 Arguments:\n  \
   <COMMAND>...  Executed command line (or pass via stdin with --stdin)\n\n\
 Options:\n  \
@@ -628,7 +628,7 @@ Options:\n  \
         Some("search") => {
             let _ = out.write_all(
                 b"Interactive fuzzy search picker (default)\n\n\
-Usage: rs search [OPTIONS] [QUERY]\n\n\
+Usage: xc search [OPTIONS] [QUERY]\n\n\
 Arguments:\n  \
   [QUERY]  Initial search query\n\n\
 Options:\n  \
@@ -643,7 +643,7 @@ Options:\n  \
         _ => {
             let _ = out.write_all(
                 b"Ultra fast shell history engine\n\n\
-Usage: rs [OPTIONS] [QUERY] [COMMAND]\n\n\
+Usage: xc [OPTIONS] [QUERY] [COMMAND]\n\n\
 Commands:\n  \
   search   Interactive fuzzy search picker (default)\n  \
   history  Import or export history logs\n  \
@@ -667,7 +667,7 @@ Options:\n  \
 
 fn main() {
     if let Err(e) = run() {
-        let _ = writeln!(std::io::stderr().lock(), "rs: {e}");
+        let _ = writeln!(std::io::stderr().lock(), "xc: {e}");
         std::process::exit(e.exit_code());
     }
 }
@@ -681,7 +681,7 @@ fn run() -> Result<(), Error> {
             Ok(())
         }
         Action::Version => {
-            let _ = writeln!(std::io::stdout().lock(), "rs {}", env!("CARGO_PKG_VERSION"));
+            let _ = writeln!(std::io::stdout().lock(), "xc {}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
         Action::Init { shell } => {
@@ -746,7 +746,7 @@ fn execute(
         }
         Action::HistoryImport { path } => {
             let count = record::import_history(path.as_deref(), &config)?;
-            let _ = writeln!(std::io::stderr().lock(), "rs: imported {count} commands");
+            let _ = writeln!(std::io::stderr().lock(), "xc: imported {count} commands");
             Ok(())
         }
         Action::HistoryExport { path } => {

@@ -4,11 +4,11 @@
 )]
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
-use rs::arena::{Arena, Scope};
-use rs::search::search;
 use std::hint::black_box;
 use std::io::Write;
 use std::path::Path;
+use xc::arena::{Arena, Scope};
+use xc::search::search;
 
 const BENCH_ENTRY_COUNT: usize = 100_000;
 

@@ -1,14 +1,14 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
-use rs::arena::{Arena, Scope};
 use std::io::Write;
+use xc::arena::{Arena, Scope};
 
 #[test]
 fn e2e_ingestion_and_roundtrip() {
     let dir = tempfile::tempdir().expect("tempdir");
     let history_path = dir.path().join("history.tsv");
 
-    let mut cmd = Command::cargo_bin("rs").expect("binary");
+    let mut cmd = Command::cargo_bin("xc").expect("binary");
     cmd.env("RS_HISTORY_PATH", &history_path)
         .args([
             "record",
@@ -38,7 +38,7 @@ fn e2e_deduplication_newest_wins() {
 
     // Record the same command 3 times
     for i in 1..=3 {
-        let mut cmd = Command::cargo_bin("rs").expect("binary");
+        let mut cmd = Command::cargo_bin("xc").expect("binary");
         cmd.env("RS_HISTORY_PATH", &history_path)
             .args(["record", "--", "cargo test", "0", &format!("{i}0")])
             .assert()
@@ -62,7 +62,7 @@ fn e2e_scope_isolation_global_and_local() {
     let dir = tempfile::tempdir().expect("tempdir");
     let history_path = dir.path().join("history.tsv");
 
-    let mut cmd1 = Command::cargo_bin("rs").expect("binary");
+    let mut cmd1 = Command::cargo_bin("xc").expect("binary");
     cmd1.env("RS_HISTORY_PATH", &history_path)
         .args([
             "record",
@@ -75,7 +75,7 @@ fn e2e_scope_isolation_global_and_local() {
         .assert()
         .success();
 
-    let mut cmd2 = Command::cargo_bin("rs").expect("binary");
+    let mut cmd2 = Command::cargo_bin("xc").expect("binary");
     cmd2.env("RS_HISTORY_PATH", &history_path)
         .args([
             "record",
@@ -110,14 +110,14 @@ fn e2e_security_and_privacy_policy() {
     let history_path = dir.path().join("history.tsv");
 
     // 1. Excluded commands: exit, clear
-    let mut cmd_exit = Command::cargo_bin("rs").expect("binary");
+    let mut cmd_exit = Command::cargo_bin("xc").expect("binary");
     cmd_exit
         .env("RS_HISTORY_PATH", &history_path)
         .args(["record", "exit", "--exit=0", "--duration=10"])
         .assert()
         .success();
 
-    let mut cmd_clear = Command::cargo_bin("rs").expect("binary");
+    let mut cmd_clear = Command::cargo_bin("xc").expect("binary");
     cmd_clear
         .env("RS_HISTORY_PATH", &history_path)
         .args(["record", "clear", "--exit=0", "--duration=10"])
@@ -125,7 +125,7 @@ fn e2e_security_and_privacy_policy() {
         .success();
 
     // 2. Ignorespace command
-    let mut cmd_space = Command::cargo_bin("rs").expect("binary");
+    let mut cmd_space = Command::cargo_bin("xc").expect("binary");
     cmd_space
         .env("RS_HISTORY_PATH", &history_path)
         .args(["record", "--", " secret_command", "0", "10"])
@@ -133,7 +133,7 @@ fn e2e_security_and_privacy_policy() {
         .success();
 
     // 3. Secret masking: AWS_SECRET and --password
-    let mut cmd_secret = Command::cargo_bin("rs").expect("binary");
+    let mut cmd_secret = Command::cargo_bin("xc").expect("binary");
     cmd_secret
         .env("RS_HISTORY_PATH", &history_path)
         .args([
@@ -186,43 +186,43 @@ fn e2e_graceful_degeneration() {
 #[test]
 fn e2e_cli_dispatch_and_exit_codes() {
     // Version
-    let mut cmd = Command::cargo_bin("rs").expect("binary");
+    let mut cmd = Command::cargo_bin("xc").expect("binary");
     cmd.arg("--version")
         .assert()
         .success()
         .stdout(predicate::str::contains(format!(
-            "rs {}",
+            "xc {}",
             env!("CARGO_PKG_VERSION")
         )));
 
     // Help
-    let mut cmd = Command::cargo_bin("rs").expect("binary");
+    let mut cmd = Command::cargo_bin("xc").expect("binary");
     cmd.arg("--help")
         .assert()
         .success()
         .stdout(predicate::str::contains("Usage:"));
 
     // Init hooks
-    let mut cmd = Command::cargo_bin("rs").expect("binary");
+    let mut cmd = Command::cargo_bin("xc").expect("binary");
     cmd.args(["init", "bash"])
         .assert()
         .success()
         .stdout(predicate::str::contains("__rs_search"));
 
-    let mut cmd = Command::cargo_bin("rs").expect("binary");
+    let mut cmd = Command::cargo_bin("xc").expect("binary");
     cmd.args(["init", "zsh"])
         .assert()
         .success()
         .stdout(predicate::str::contains("__rs_widget"));
 
-    let mut cmd = Command::cargo_bin("rs").expect("binary");
+    let mut cmd = Command::cargo_bin("xc").expect("binary");
     cmd.args(["init", "fish"])
         .assert()
         .success()
         .stdout(predicate::str::contains("__rs_search"));
 
     // Unknown subcommand
-    let mut cmd = Command::cargo_bin("rs").expect("binary");
+    let mut cmd = Command::cargo_bin("xc").expect("binary");
     cmd.arg("invalid_subcommand_123")
         .assert()
         .code(1)

@@ -12,8 +12,8 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use rs::arena::{Arena, Scope};
-use rs::search::search;
+use xc::arena::{Arena, Scope};
+use xc::search::search;
 
 const SAMPLES: usize = 100;
 const WARMUP: usize = 10;
@@ -48,7 +48,7 @@ const TEMPLATES: &[(&str, &str, i32)] = &[
         0,
     ),
     (
-        "curl -sSL https://api.github.com/repos/zx0r/rs | jq .stargazers_count",
+        "curl -sSL https://api.github.com/repos/zx0r/xc | jq .stargazers_count",
         "/Users/x0r/.config/rs",
         0,
     ),
@@ -159,7 +159,7 @@ fn compute_stats(mut samples: Vec<Duration>) -> Stats {
 }
 
 fn benchmark_query(arena: &Arena, query: &str, scope: Scope) -> (Stats, usize) {
-    // Warm-up runs to stabilize CPU branch predictors and instruction caches
+    // Warm-up runs to stabilize CPU branch predictoxc and instruction caches
     for _ in 0..WARMUP {
         let _ = black_box(search(arena, query, scope));
     }
@@ -221,7 +221,7 @@ fn run_scale_suite(
     let file_mb = file_bytes as f64 / 1_000_000.0;
 
     println!("================================================================================");
-    println!("     rs — {title} (100 STATISTICAL RUNS)");
+    println!("     xc — {title} (100 STATISTICAL RUNS)");
     println!("================================================================================");
     println!("Dataset Scale   : {count} records ({file_mb:.2} MB raw TSV)");
     println!("Statistical Runs: N = {SAMPLES} iterations (after {WARMUP} warm-up runs)");
@@ -356,7 +356,7 @@ fn fmt_num(n: usize) -> String {
 fn generate_markdown_report(results: &[ScaleResult]) {
     let mut out = String::with_capacity(32 * 1024);
 
-    out.push_str("# Multi-Scale Empirical Stress Benchmark Report: rs vs. Atuin\n");
+    out.push_str("# Multi-Scale Empirical Stress Benchmark Report: xc vs. Atuin\n");
     out.push_str("**Test Matrix:** 100,000 | 500,000 | 1,000,000 Records\n");
     out.push_str("**Methodology:** N = 100 Iterations per Query Archetype (10 Warm-up Runs)\n");
     out.push_str(
@@ -411,8 +411,8 @@ fn generate_markdown_report(results: &[ScaleResult]) {
     }
 
     out.push_str("\n---\n\n");
-    out.push_str("## Domain 3: Comparative Architectural Superiority (rs vs. Atuin)\n\n");
-    out.push_str("| Microarchitectural Metric | Atuin (v18.24.4, SQLite WAL) | rs (v0.1.6, Columnar Arena) | Superiority Factor | Physical Mechanism |\n");
+    out.push_str("## Domain 3: Comparative Architectural Superiority (xc vs. Atuin)\n\n");
+    out.push_str("| Microarchitectural Metric | Atuin (v18.24.4, SQLite WAL) | xc (v0.1.6, Columnar Arena) | Superiority Factor | Physical Mechanism |\n");
     out.push_str("|:---|:---:|:---:|:---:|:---|\n");
     out.push_str("| **Binary Executable Size** | 22.80 MB | **4.10 MB** (1.4 MB stripped) | **5.6× smaller** | Zero async/gRPC/SQL bloat |\n");
     out.push_str("| **Mach-O `__TEXT` Section** | 18.25 MB | **2.85 MB** | **6.4× smaller** | Fits in L2/L3; zero L1I cache misses |\n");
@@ -445,7 +445,7 @@ fn main() {
     }
 
     println!("\n################################################################################");
-    println!("     rs — MULTI-SCALE EMPIRICAL STRESS TEST & MICROARCHITECTURAL BENCHMARK");
+    println!("     xc — MULTI-SCALE EMPIRICAL STRESS TEST & MICROARCHITECTURAL BENCHMARK");
     println!("            (100,000 | 500,000 | 1,000,000 RECORDS — N = 100 SAMPLE RUNS)");
     println!("################################################################################\n");
 

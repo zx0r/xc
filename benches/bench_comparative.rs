@@ -12,7 +12,7 @@
     reason = "Comparative benchmark reporting and assertion harness"
 )]
 
-//! Comparative Benchmark & Stress Test: rs vs. Atuin
+//! Comparative Benchmark & Stress Test: xc vs. Atuin
 //!
 //! Fully automated. Zero hardcoded data. Every number in the generated report
 //! comes from live measurements on the executing machine.
@@ -20,9 +20,9 @@
 //! Architecture:
 //! ┌──────────────────────────────────────────────────────────────────┐
 //! │ 1. Dataset Generation   — Deterministic synthetic TSV + SQLite  │
-//! │ 2. rs Measurement   — In-process Arena load + search        │
+//! │ 2. xc Measurement   — In-process Arena load + search        │
 //! │ 3. Atuin Measurement    — Subprocess via `atuin search` CLI     │
-//! │ 4. Kernel Counters      — `/usr/bin/time -l` PMU parsing        │
+//! │ 4. Kernel Countexc      — `/usr/bin/time -l` PMU parsing        │
 //! │ 5. Binary Metrics       — `size(1)` + `cargo tree` + stat(2)    │
 //! │ 6. Report Synthesis     — Markdown tables from measured structs  │
 //! └──────────────────────────────────────────────────────────────────┘
@@ -37,8 +37,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use rs::arena::{Arena, Scope};
-use rs::search::search;
+use xc::arena::{Arena, Scope};
+use xc::search::search;
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -488,7 +488,7 @@ fn setup_atuin_env(db_path: &Path) -> AtuinEnv {
     }
 }
 
-// ── rs Benchmarks (In-Process) ───────────────────────────────────────────
+// ── xc Benchmarks (In-Process) ───────────────────────────────────────────
 
 fn bench_rs_load(path: &Path, expected_count: usize) -> (Stats, f64) {
     let file_bytes = fs::metadata(path).map_or(0, |m| m.len());
@@ -860,7 +860,7 @@ fn generate_report(
     let now = chrono_stamp();
 
     // Header
-    out.push_str("# Multi-Scale Empirical Stress Benchmark Report: rs vs. Atuin\n\n");
+    out.push_str("# Multi-Scale Empirical Stress Benchmark Report: xc vs. Atuin\n\n");
     let _ = writeln!(out, "> **Generated:** {now}  ");
     let _ = writeln!(
         out,
@@ -870,7 +870,7 @@ fn generate_report(
     out.push_str("> **Methodology:** All data measured live. Zero hardcoded values.  \n");
     let _ = writeln!(
         out,
-        "> **rs Samples:** N = {SAMPLES} iterations ({WARMUP} warm-up) | **Atuin Samples:** N = {ATUIN_SAMPLES} ({ATUIN_WARMUP} warm-up)"
+        "> **xc Samples:** N = {SAMPLES} iterations ({WARMUP} warm-up) | **Atuin Samples:** N = {ATUIN_SAMPLES} ({ATUIN_WARMUP} warm-up)"
     );
     out.push_str("> **HCI Display SLA:** 120 Hz / ProMotion (< 8.33 ms) & 60 Hz (< 16.66 ms)\n\n");
 
@@ -906,7 +906,7 @@ fn generate_report(
         .any(|r| r.queries.iter().any(|q| q.atuin.is_some()));
 
     if has_atuin {
-        out.push_str("| Scale | Query Archetype | rs p50 | rs p95 | rs p99 | Atuin p50 | Atuin p95 | Speedup (p50) | 120Hz SLA |\n");
+        out.push_str("| Scale | Query Archetype | xc p50 | xc p95 | xc p99 | Atuin p50 | Atuin p95 | Speedup (p50) | 120Hz SLA |\n");
         out.push_str("|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n");
 
         for r in scale_results {
@@ -975,7 +975,7 @@ fn generate_report(
     out.push_str("## Domain 3: Binary Footprint & Supply Chain Metrics\n\n");
 
     if let Some(a) = a_bin_metrics {
-        out.push_str("| Metric | Atuin (measured) | rs (measured) | Ratio | Significance |\n");
+        out.push_str("| Metric | Atuin (measured) | xc (measured) | Ratio | Significance |\n");
         out.push_str("|:---|:---:|:---:|:---:|:---|\n");
 
         let _ = writeln!(
@@ -1000,7 +1000,7 @@ fn generate_report(
             ratio_str(a.dep_count as f64, x_bin_metrics.dep_count as f64)
         );
     } else {
-        out.push_str("| Metric | rs (measured) |\n");
+        out.push_str("| Metric | xc (measured) |\n");
         out.push_str("|:---|:---:|\n");
         let _ = writeln!(
             out,
@@ -1021,12 +1021,12 @@ fn generate_report(
 
     out.push_str("\n---\n\n");
 
-    // ── Domain 4: Kernel & Hardware Counters ──
-    out.push_str("## Domain 4: Kernel & Hardware Performance Counters (`/usr/bin/time -l`)\n\n");
+    // ── Domain 4: Kernel & Hardware Countexc ──
+    out.push_str("## Domain 4: Kernel & Hardware Performance Countexc (`/usr/bin/time -l`)\n\n");
 
     if let Some(a) = a_kern {
         out.push_str(
-            "| Metric | Atuin (measured) | rs (measured) | Ratio | Physical Mechanism |\n",
+            "| Metric | Atuin (measured) | xc (measured) | Ratio | Physical Mechanism |\n",
         );
         out.push_str("|:---|:---:|:---:|:---:|:---|\n");
 
@@ -1093,7 +1093,7 @@ fn generate_report(
             )
         );
     } else {
-        out.push_str("| Metric | rs (measured) |\n");
+        out.push_str("| Metric | xc (measured) |\n");
         out.push_str("|:---|:---:|\n");
         let _ = writeln!(
             out,
@@ -1117,7 +1117,7 @@ fn generate_report(
     if has_atuin {
         out.push_str("\n---\n\n");
         out.push_str("## Domain 5: Comparative Latency Summary by Scale\n\n");
-        out.push_str("| Scale | Best rs p50 | Worst rs p95 | Best Atuin p50 | Worst Atuin p95 | Min Speedup | Max Speedup |\n");
+        out.push_str("| Scale | Best xc p50 | Worst xc p95 | Best Atuin p50 | Worst Atuin p95 | Min Speedup | Max Speedup |\n");
         out.push_str("|:---|:---:|:---:|:---:|:---:|:---:|:---:|\n");
 
         for r in scale_results {
@@ -1225,7 +1225,7 @@ fn main() {
 
     println!();
     println!("╔══════════════════════════════════════════════════════════════════════════════╗");
-    println!("║  rs — COMPARATIVE BENCHMARK & STRESS TEST vs. ATUIN                    ║");
+    println!("║  xc — COMPARATIVE BENCHMARK & STRESS TEST vs. ATUIN                    ║");
     println!("║  Scales: 100,000 │ 500,000 │ 1,000,000 records                             ║");
     println!("║  Zero hardcoded data. All values measured live.                             ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝");
@@ -1286,11 +1286,11 @@ fn main() {
     });
 
     // ── Kernel Metrics (cold-start --version) ──
-    eprintln!("\n── Collecting kernel/hardware counters (--version, 15 runs) ──");
+    eprintln!("\n── Collecting kernel/hardware countexc (--version, 15 runs) ──");
     let x_kern = if rs_release.is_file() {
         collect_kernel_metrics(&rs_release, &["--version"], &[])
     } else {
-        eprintln!("  ⚠ rs release binary not found. Run `cargo build --release` first.");
+        eprintln!("  ⚠ xc release binary not found. Run `cargo build --release` first.");
         KernelMetrics::default()
     };
     eprintln!(
@@ -1339,8 +1339,8 @@ fn main() {
             None
         };
 
-        // rs ingestion benchmark
-        eprintln!("\n  Benchmarking rs ingestion (N={SAMPLES} samples)...");
+        // xc ingestion benchmark
+        eprintln!("\n  Benchmarking xc ingestion (N={SAMPLES} samples)...");
         let (load_stats, throughput) = bench_rs_load(&tsv_path, sc.count);
         eprintln!(
             "    p50: {} | p95: {} | throughput: {:.2} GB/s",
@@ -1358,7 +1358,7 @@ fn main() {
         for qs in QUERY_SUITE {
             eprint!("  Benchmarking: {:<45} ", qs.label);
 
-            // rs (in-process)
+            // xc (in-process)
             let (x_stats, x_matches) = bench_rs_search(&arena, qs.rs_query, qs.scope);
             eprint!("rs: {} ", fmt_duration(x_stats.median));
 
@@ -1421,7 +1421,7 @@ fn main() {
     println!("┌─────────────────────────────────────────────────────────────────────────────┐");
     println!("│                         VERIFICATION SUMMARY                                │");
     println!("├───────────┬──────────────┬──────────────┬──────────────┬─────────────────────┤");
-    println!("│   Scale   │ rs p50   │ Atuin p50    │  Speedup     │ 120Hz SLA           │");
+    println!("│   Scale   │ xc p50   │ Atuin p50    │  Speedup     │ 120Hz SLA           │");
     println!("├───────────┼──────────────┼──────────────┼──────────────┼─────────────────────┤");
 
     for r in &scale_results {

@@ -590,7 +590,7 @@ impl Arena {
 // ── Config ───────────────────────────────────────────────────────
 
 impl Config {
-    /// Load config: env vars → `~/.config/rs/config` → compiled-in defaults.
+    /// Load config: env vars → `~/.config/xc/config` → compiled-in defaults.
     #[must_use]
     pub fn load() -> Self {
         let mut cfg = Self::defaults();
@@ -629,7 +629,7 @@ impl Config {
         let history_path = std::env::var("HOME").map_or_else(
             |_| PathBuf::from("/tmp/rs_history.tsv"),
             |h| {
-                let primary = PathBuf::from(&h).join(".local/share/rs/history.tsv");
+                let primary = PathBuf::from(&h).join(".local/share/xc/history.tsv");
                 let legacy = PathBuf::from(&h).join(".local/share/xstory/history.tsv");
                 if !primary.exists() && legacy.exists() {
                     legacy
@@ -654,7 +654,7 @@ impl Config {
 
     fn config_file_path() -> Option<PathBuf> {
         let home = std::env::var("HOME").ok()?;
-        let primary = PathBuf::from(&home).join(".config/rs/config");
+        let primary = PathBuf::from(&home).join(".config/xc/config");
         let legacy = PathBuf::from(&home).join(".config/xstory/config");
         if !primary.exists() && legacy.exists() {
             Some(legacy)

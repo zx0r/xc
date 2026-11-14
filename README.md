@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="https://github.com/zx0r/rs/releases">
-    <img src="https://img.shields.io/github/v/release/zx0r/rs?color=4be1ff&label=RELEASE&style=flat-square&logo=github&labelColor=1a1a1a" alt="Release" />
+  <a href="https://github.com/zx0r/xc/releases">
+    <img src="https://img.shields.io/github/v/release/zx0r/xc?color=4be1ff&label=RELEASE&style=flat-square&logo=github&labelColor=1a1a1a" alt="Release" />
   </a>
   <a href="LICENSE-MIT">
     <img src="https://img.shields.io/badge/LICENSE-MIT%2FApache--2.0-9fef00?style=flat-square&logo=opensourceinitiative&logoColor=white&labelColor=1a1a1a" alt="License" />
@@ -14,12 +14,12 @@
 </p>
 
 <p align="center">
-  <img src="assets/images/rs-banner.jpg" alt="rs banner" style="border-radius: 8px; max-width: 100%;" />
+  <img src="assets/images/xc-banner.jpg" alt="xc banner" style="border-radius: 8px; max-width: 100%;" />
 </p>
 
 <p align="center">
   <a href="https://github.com/user-attachments/assets/808dbcbd-fad3-43f3-a6c9-788406c55331">
-    <img src="assets/gif/rs-preview.gif" alt="rs demo — sub-millisecond shell history fuzzy search and preview" style="border-radius: 8px; max-width: 100%;" />
+    <img src="assets/gif/xc-preview.gif" alt="xc demo — sub-millisecond shell history fuzzy search and preview" style="border-radius: 8px; max-width: 100%;" />
   </a>
 </p>
 
@@ -29,14 +29,14 @@
 
 ```bash
 # Cargo (crates.io)
-cargo install rs
+cargo install xc
 
 # Homebrew (macOS / Linux)
-brew install zx0r/tap/rs
+brew install zx0r/tap/xc
 
 # Build from source (LTO fat, stripped)
-gh repo clone zx0r/rs
-cd rs && just release
+gh repo clone zx0r/xc
+cd xc && just release
 ```
 
 ---
@@ -45,31 +45,31 @@ cd rs && just release
 
 ```bash
 # Zsh (~/.zshrc)
-eval "$(rs init zsh)"
+eval "$(xc init zsh)"
 
 # Bash (~/.bashrc)
-eval "$(rs init bash)"
+eval "$(xc init bash)"
 
 # Fish (~/.config/fish/config.fish)
-rs init fish | source
+xc init fish | source
 ```
 ---
 
 ### Manifest
 
-The rs Unix-style approach:
+The xc Unix-style approach:
 
 - **Core**: Ultra-fast, deterministic local engine (utilizing zero-copy `mmap`, `O_APPEND` for TSV files). 
 - **Synchronization**: Achieved by composing standard Unix utilities to operate on the `history.tsv` storage format. 
 
-Since the rs data store is simply a flat text file (`history.tsv`), there is no need for custom synchronization code within the Rust binary itself! Git already handles diffs, merges, SSH authentication, signed commits, and remote repository interactions better than any built-in library could.
+Since the xc data store is simply a flat text file (`history.tsv`), there is no need for custom synchronization code within the Rust binary itself! Git already handles diffs, merges, SSH authentication, signed commits, and remote repository interactions better than any built-in library could.
 
 #### Remote Synchronization: The Unix Paradigm
 
-Unlike monolithic solutions that bundle background HTTP/gRPC daemons, database locks, and proprietary sync servers into your shell prompt, `rs` follows the **Unix single-responsibility principle**:
+Unlike monolithic solutions that bundle background HTTP/gRPC daemons, database locks, and proprietary sync servers into your shell prompt, `xc` follows the **Unix single-responsibility principle**:
 
 1. **Format as Interface**: All history is stored in a clean, newline-delimited TSV (`history.tsv`) with atomic append guarantees.
-2. **Zero In-Process Network Bloat**: `rs` never initiates network sockets, keeping memory footprints low (< 5 MB) and execution deterministic.
+2. **Zero In-Process Network Bloat**: `xc` never initiates network sockets, keeping memory footprints low (< 5 MB) and execution deterministic.
 3. **Native Git & Fleet Orchestration**: Multi-machine history synchronization is handled out-of-band via Git, cron/systemd timers, or dotfile managers (`git-crypt`, `sops`, `age`).
 
 ---
@@ -118,18 +118,18 @@ Layout uses a 3-panel stacked hierarchy: `History` $\rightarrow$ `Preview` $\rig
 ### Configuration
 
 ```toml
-# [OPTIONAL] Path: '~/.config/rs/config'
+# [OPTIONAL] Path: '~/.config/xc/config'
 
-history_path = "~/.local/share/rs/history.tsv"
+history_path = "~/.local/share/xc/history.tsv"
 scroll_off = 4
 preview_mode = "fixed" # OR "dynamic"
 theme = "dark" # OR "light" | "catppuccin" | "tokyo-night" | "gruvbox" | "nord" | "cake"
 ```
 
 CLI flags override config values:
-- `rs -t <theme>` (or `--theme=<theme>`)
-- `rs -p <preview>` (or `--preview=<fixed|dynamic>`)
-- `rs -s <scope>` (or `--scope=<global|local>`)
+- `xc -t <theme>` (or `--theme=<theme>`)
+- `xc -p <preview>` (or `--preview=<fixed|dynamic>`)
+- `xc -s <scope>` (or `--scope=<global|local>`)
 
 Environment variables: `RS_THEME`, `RS_PREVIEW`, `RS_HISTORY_PATH`, `RS_SCROLL_OFF`.
 
@@ -139,20 +139,20 @@ Environment variables: `RS_THEME`, `RS_PREVIEW`, `RS_HISTORY_PATH`, `RS_SCROLL_O
 
 ```bash
 # Launch interactive search widget
-rs [QUERY]
+xc [QUERY]
 
 # Direct query via subcommand
-rs search -q "docker compose"
+xc search -q "docker compose"
 
 # Ingest execution log entry (invoked by shell hook)
-rs record --exit=0 --duration=50 --cwd="$PWD" -- git status
-printf 'multiline command' | rs record --stdin --cwd="$PWD" --exit=0 --duration=50
+xc record --exit=0 --duration=50 --cwd="$PWD" -- git status
+printf 'multiline command' | xc record --stdin --cwd="$PWD" --exit=0 --duration=50
 
 # Import existing shell history file
-rs history import ~/.zsh_history
+xc history import ~/.zsh_history
 
 # Export deduplicated history database to stdout
-rs history export > history.tsv
+xc history export > history.tsv
 ```
 
 ---
@@ -160,11 +160,11 @@ rs history export > history.tsv
 ### [ x s t o r y ]
 
 <p align="center">
-  <img src="./assets/gif/rs-crab.gif" width="360" height="" alt="rs" />
+  <img src="./assets/gif/xc-crab.gif" width="360" height="" alt="xc" />
 </p>
 
 ```shell
-rs [QUERY]
+xc [QUERY]
 
 [✓] zero-copy columnar arena
 [✓] sub-millisecond bitmask pruning
