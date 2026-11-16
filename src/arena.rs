@@ -335,12 +335,87 @@ pub(crate) fn unescape_into(s: &[u8], buf: &mut Vec<u8>) -> (u32, usize) {
 
 // ── Char bitmask ─────────────────────────────────────────────────
 
+/// Cacheline-aligned 256-byte lookup table mapping ASCII bytes to 64 presence bits.
+/// Guarantees:
+/// 1. Zero false negatives under case-insensitive / smart-case search (A-Z mapped to a-z slots).
+/// 2. Pure branchless execution (1 memory load per byte, residing permanently in L1d).
+/// 3. Independent dedicated bits for all 26 alphabet letters, 10 digits, and 27 shell symbols.
+#[repr(align(64))]
+struct CharBitLut([u8; 256]);
+
+const CHAR_TO_BIT_LUT: CharBitLut = {
+    let mut table = [63_u8; 256];
+
+    // Bits 0..=25: Case-folded English alphabet ('a'..='z' and 'A'..='Z')
+    let mut i = 0_u8;
+    while i < 26 {
+        table[(b'a' + i) as usize] = i;
+        table[(b'A' + i) as usize] = i;
+        i += 1;
+    }
+
+    // Bits 26..=35: ASCII digits ('0'..='9')
+    let mut d = 0_u8;
+    while d < 10 {
+        table[(b'0' + d) as usize] = 26 + d;
+        d += 1;
+    }
+
+    // Bits 36..=62: High-frequency shell syntax & path tokens (27 symbols)
+    table[b'-' as usize] = 36;
+    table[b'_' as usize] = 37;
+    table[b'/' as usize] = 38;
+    table[b'.' as usize] = 39;
+    table[b':' as usize] = 40;
+    table[b' ' as usize] = 41;
+    table[b'=' as usize] = 42;
+    table[b'\'' as usize] = 43;
+    table[b'"' as usize] = 44;
+    table[b'|' as usize] = 45;
+    table[b';' as usize] = 46;
+    table[b'$' as usize] = 47;
+    table[b'~' as usize] = 48;
+    table[b',' as usize] = 49;
+    table[b'(' as usize] = 50;
+    table[b')' as usize] = 51;
+    table[b'[' as usize] = 52;
+    table[b']' as usize] = 53;
+    table[b'{' as usize] = 54;
+    table[b'}' as usize] = 55;
+    table[b'<' as usize] = 56;
+    table[b'>' as usize] = 57;
+    table[b'&' as usize] = 58;
+    table[b'%' as usize] = 59;
+    table[b'*' as usize] = 60;
+    table[b'?' as usize] = 61;
+    table[b'+' as usize] = 62;
+
+    CharBitLut(table)
+};
+
+pub static CHAR_TO_BIT: &[u8; 256] = &CHAR_TO_BIT_LUT.0;
+
+/// Compute 64-bit presence bitmask with case folding and 4-way ILP unrolling.
 #[must_use]
+#[inline]
 pub fn char_mask(s: &[u8]) -> u64 {
     let mut mask: u64 = 0;
-    for &b in s {
-        mask |= 1_u64 << (b & 63);
+    let lut = CHAR_TO_BIT;
+
+    let (chunks, remainder) = s.as_chunks::<4>();
+
+    for c in chunks {
+        let b0 = lut[c[0] as usize];
+        let b1 = lut[c[1] as usize];
+        let b2 = lut[c[2] as usize];
+        let b3 = lut[c[3] as usize];
+        mask |= (1_u64 << b0) | (1_u64 << b1) | (1_u64 << b2) | (1_u64 << b3);
     }
+
+    for &b in remainder {
+        mask |= 1_u64 << lut[b as usize];
+    }
+
     mask
 }
 
@@ -830,6 +905,15 @@ mod tests {
         let full = char_mask(b"abc");
         let sub = char_mask(b"ab");
         assert_eq!(sub & full, sub);
+    }
+
+    #[test]
+    fn char_mask_case_insensitivity() {
+        let upper = char_mask(b"Git Status --Short");
+        let lower = char_mask(b"git status --short");
+        assert_eq!(upper, lower);
+        let query = char_mask(b"git");
+        assert_eq!(query & upper, query);
     }
 
     #[test]

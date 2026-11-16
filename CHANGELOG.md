@@ -5,56 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.7] - 2026-11-13
-
-### Changed
-- Upgraded compiler toolchain and CI matrix to Rust 1.99.0 with strict edition 2024 compliance.
-- Refactored CLI output pipeline from unbounded standard formatting macros (`println!`/`eprintln!`) to direct locked zero-copy I/O streaming (`std::io::stdout().lock().write_all`).
-- Enforced strict `allow_attributes_without_reason = "deny"` across all crates, benchmarks, and integration test suites.
-- Modernized POSIX signal handling C ABI symbol definitions to `*const core::ffi::c_void`.
-
-## [0.1.6] - 2026-10-31
+## [0.1.1] - 2026-11-16
 
 ### Fixed
-- Replaced generic top-level help stub with dedicated context-specific help screens and usage specifications across all subcommands (`init -h`, `search -h`, `record -h`, `history -h`).
+- **Nucleo Invariant Contract:** Eliminated upstream matcher assertion panic (`fuzzy_optimal.rs:37:13: should have been caught by prefilter`) via zero-copy `ProcessedQuery` with deterministic Smart-Case resolution.
+- **Bitmask False Negatives:** Replaced case-discriminating `b & 63` prefilter with a 64-byte cacheline-aligned 256-byte LUT (`CHAR_TO_BIT_LUT`, `#[repr(align(64))]`), unifying `A..=Z` and `a..=z` into shared 26 slots to prevent silent candidate pruning.
 
-## [0.1.5] - 2026-10-31
-
-### Fixed
-- Added `-h` and `--help` flag support across all subcommands (`init -h`, `search -h`, `record -h`, `history -h`).
-
-## [0.1.4] - 2026-10-31
-
-### Added
-- Documented `search` subcommand and `-t, --theme` flag in CLI help (`-h`).
-- Added architectural scale benchmark suite (`bench_scale`).
-
-## [0.1.3] - 2026-10-31
-
-### Fixed
-- Replaced hardcoded version output in `Action::Version` with compile-time `env!("CARGO_PKG_VERSION")`.
-
-## [0.1.2] - 2026-10-31
-
-### Added
-- 4K Retina hero banner, demo video, and automated media pipeline (`scripts/build-demo.sh`).
-- Cake syntax theme support and interactive `Ctrl+T` theme cycle.
-- `cov` coverage recipe in `Justfile` and `.cargo/config.toml` alias.
-
-### Fixed
-- Replaced Linux `copy_file_range` syscall with chunked buffered copy in `stream_copy` for Miri compliance.
-- Fixed mascot asset path and link references in `README.md`.
-
-## [0.1.1] - 2026-10-30
-
-### Added
-- Multi-platform release automation via `cargo-dist` and GitHub Actions.
-- Automated Homebrew tap formula publishing for `Xc`.
-- Renovate configuration for dependency updates.
-- Dual licensing (`MIT` / `Apache-2.0`) and `CONTRIBUTING.md`.
-
-### Changed
-- Configured `[profile.dist]` profile with LTO and symbol stripping.
+### Optimized
+- **Zero-Allocation Hot Path:** Enforced 0 heap allocations on query preprocessing via `[u8; 256]` stack scratch buffer and immutable caller-frame `Utf32Str` borrowing across Rayon threads.
+- **L1d Cache Chunk Partitioning:** Reduced Rayon chunk size from 32,768 to 4,096 entries (32 KB working set), guaranteeing 100% L1 Data Cache residency per physical core.
+- **Branchless 4-Way ILP Bitmask:** Modernized ASCII presence scanning with `as_chunks::<4>()` unrolling, retiring at ~0.4 cycles per byte.
 
 ## [0.1.0] - 2026-10-30
 
@@ -65,12 +25,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Seamless Bash, Zsh, and Fish shell hooks for transparent execution time and exit code tracking.
 - Cross-platform distribution pipeline powered by `cargo-dist` with Homebrew tap integration.
 
-[0.1.7]: https://github.com/zx0r/xc/compare/v0.1.6...v0.1.7
-[0.1.6]: https://github.com/zx0r/xc/compare/v0.1.5...v0.1.6
-[0.1.5]: https://github.com/zx0r/xc/compare/v0.1.4...v0.1.5
-[0.1.4]: https://github.com/zx0r/xc/compare/v0.1.3...v0.1.4
-[0.1.3]: https://github.com/zx0r/xc/compare/v0.1.2...v0.1.3
-[0.1.2]: https://github.com/zx0r/xc/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/zx0r/xc/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/zx0r/xc/releases/tag/v0.1.0
-

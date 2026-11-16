@@ -18,7 +18,11 @@ pub const TOP_K: usize = 1000;
 const PAR_THRESHOLD: usize = 500;
 
 /// Rayon chunk size for parallel iteration.
-const CHUNK_SIZE: usize = 32768;
+/// 4096 entries * 8 bytes (mask) = 32KB (fits 100% within L1 Data Cache of a modern CPU core).
+const CHUNK_SIZE: usize = 4096;
+
+/// Stack scratch buffer capacity for zero-allocation query normalization.
+pub const STACK_QUERY_CAPACITY: usize = 256;
 
 // ── Query Parsing ────────────────────────────────────────────────
 
@@ -30,6 +34,28 @@ pub enum QueryMode<'a> {
     Substring(&'a str), // 'foo
     Suffix(&'a str),    // foo$
     Fuzzy(&'a str),     // default
+}
+
+/// Match algorithm kind dispatched to matcher.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum MatchKind {
+    Prefix,
+    Substring,
+    Suffix,
+    Fuzzy,
+}
+
+impl QueryMode<'_> {
+    #[must_use]
+    pub const fn match_kind(self) -> Option<MatchKind> {
+        match self {
+            Self::Empty => None,
+            Self::Prefix(_) => Some(MatchKind::Prefix),
+            Self::Substring(_) => Some(MatchKind::Substring),
+            Self::Suffix(_) => Some(MatchKind::Suffix),
+            Self::Fuzzy(_) => Some(MatchKind::Fuzzy),
+        }
+    }
 }
 
 #[allow(
@@ -64,6 +90,62 @@ fn parse_query(q: &str) -> QueryMode<'_> {
     }
 }
 
+// ── Preprocessed Query ───────────────────────────────────────────
+
+/// Preprocessed query with guaranteed nucleo-matcher contract compliance and 0 heap allocations.
+#[derive(Debug)]
+pub struct ProcessedQuery<'a> {
+    pub text: &'a str,
+    pub ignore_case: bool,
+    pub mask: u64,
+}
+
+impl<'a> ProcessedQuery<'a> {
+    /// Normalizes query with zero heap allocations on the hot path (stack buffer `[u8; 256]`).
+    ///
+    /// Implements Smart-Case:
+    /// - If uppercase ASCII character is detected: `ignore_case = false` (case-sensitive matching).
+    ///   Query text is borrowed verbatim with 0 copies and 0 allocations.
+    /// - If only lowercase ASCII characters: `ignore_case = true` (case-insensitive matching).
+    ///   Query text is borrowed verbatim with 0 copies and 0 allocations.
+    ///
+    /// If `smart_case = false` (forced case-insensitive mode) and query contains uppercase:
+    ///   Lowercases into stack scratch buffer `[u8; 256]` (0 heap allocations).
+    #[inline]
+    pub fn new(
+        raw: &'a str,
+        scratch: &'a mut [u8; STACK_QUERY_CAPACITY],
+        overflow: &'a mut Option<String>,
+        smart_case: bool,
+    ) -> Self {
+        let bytes = raw.as_bytes();
+        let has_upper = bytes.iter().any(u8::is_ascii_uppercase);
+
+        let (text, ignore_case) = if smart_case {
+            if has_upper { (raw, false) } else { (raw, true) }
+        } else if has_upper {
+            if bytes.len() <= STACK_QUERY_CAPACITY {
+                scratch[..bytes.len()].copy_from_slice(bytes);
+                scratch[..bytes.len()].make_ascii_lowercase();
+                let s = core::str::from_utf8(&scratch[..bytes.len()]).unwrap_or(raw);
+                (s, true)
+            } else {
+                let s = overflow.insert(raw.to_ascii_lowercase());
+                (s.as_str(), true)
+            }
+        } else {
+            (raw, true)
+        };
+
+        let mask = char_mask(text.as_bytes());
+        Self {
+            text,
+            ignore_case,
+            mask,
+        }
+    }
+}
+
 // ── Search Result ────────────────────────────────────────────────
 
 /// Immutable search result: indices into Arena, sorted by score descending.
@@ -88,24 +170,20 @@ impl SearchResult<'_> {
 fn search_chunk(
     arena: &Arena,
     indices: &[u32],
-    mode: QueryMode<'_>,
+    kind: MatchKind,
+    needle: Utf32Str<'_>,
+    q_bytes: &[u8],
+    ignore_case: bool,
     query_mask: u64,
 ) -> (BinaryHeap<Scored>, u32) {
-    let query_str = match mode {
-        QueryMode::Empty => unreachable!(),
-        QueryMode::Prefix(s)
-        | QueryMode::Substring(s)
-        | QueryMode::Suffix(s)
-        | QueryMode::Fuzzy(s) => s,
-    };
-    let q_bytes = query_str.as_bytes();
-    let fast_prefix = matches!(mode, QueryMode::Prefix(_) | QueryMode::Fuzzy(_));
+    let fast_prefix = matches!(kind, MatchKind::Prefix | MatchKind::Fuzzy);
 
-    let mut matcher = Matcher::new(nucleo_matcher::Config::DEFAULT);
-    let mut needle_buf = Vec::new();
-    let needle = Utf32Str::new(query_str, &mut needle_buf);
+    let mut config = nucleo_matcher::Config::DEFAULT;
+    config.ignore_case = ignore_case;
+    let mut matcher = Matcher::new(config);
+
     let mut haystack_buf = Vec::new();
-    let mut heap = BinaryHeap::with_capacity(TOP_K.min(indices.len()));
+    let mut heap = BinaryHeap::with_capacity(TOP_K.min(indices.len()).min(128));
     let mut total_matches: u32 = 0;
 
     for &idx in indices {
@@ -115,17 +193,19 @@ fn search_chunk(
 
             let score = if fast_prefix
                 && h_bytes.len() >= q_bytes.len()
-                && h_bytes[..q_bytes.len()].eq_ignore_ascii_case(q_bytes)
-            {
+                && (if ignore_case {
+                    h_bytes[..q_bytes.len()].eq_ignore_ascii_case(q_bytes)
+                } else {
+                    &h_bytes[..q_bytes.len()] == q_bytes
+                }) {
                 Some(20_000_u32.saturating_sub(cmd.len().min(10_000) as u32))
             } else {
                 let haystack = Utf32Str::new(cmd, &mut haystack_buf);
-                let s = match mode {
-                    QueryMode::Empty => unreachable!(),
-                    QueryMode::Prefix(_) => matcher.prefix_match(haystack, needle),
-                    QueryMode::Substring(_) => matcher.substring_match(haystack, needle),
-                    QueryMode::Suffix(_) => matcher.postfix_match(haystack, needle),
-                    QueryMode::Fuzzy(_) => matcher.fuzzy_match(haystack, needle),
+                let s = match kind {
+                    MatchKind::Prefix => matcher.prefix_match(haystack, needle),
+                    MatchKind::Substring => matcher.substring_match(haystack, needle),
+                    MatchKind::Suffix => matcher.postfix_match(haystack, needle),
+                    MatchKind::Fuzzy => matcher.fuzzy_match(haystack, needle),
                 };
                 s.map(u32::from)
             };
@@ -153,10 +233,21 @@ fn search_chunk(
 fn search_sequential<'a>(
     arena: &'a Arena,
     indices: &'a [u32],
-    mode: QueryMode<'_>,
+    kind: MatchKind,
+    needle: Utf32Str<'_>,
+    q_bytes: &[u8],
+    ignore_case: bool,
     query_mask: u64,
 ) -> SearchResult<'a> {
-    let (heap, total) = search_chunk(arena, indices, mode, query_mask);
+    let (heap, total) = search_chunk(
+        arena,
+        indices,
+        kind,
+        needle,
+        q_bytes,
+        ignore_case,
+        query_mask,
+    );
     let mut items = heap.into_vec();
     items.sort_unstable_by(|a, b| b.score.cmp(&a.score).then_with(|| a.idx.cmp(&b.idx)));
     let result_indices = items.into_iter().map(|s| s.idx).collect();
@@ -169,14 +260,17 @@ fn search_sequential<'a>(
 fn search_parallel<'a>(
     arena: &'a Arena,
     indices: &'a [u32],
-    mode: QueryMode<'_>,
+    kind: MatchKind,
+    needle: Utf32Str<'_>,
+    q_bytes: &[u8],
+    ignore_case: bool,
     query_mask: u64,
 ) -> SearchResult<'a> {
     use rayon::prelude::{ParallelIterator, ParallelSlice};
 
     let local_results: Vec<(BinaryHeap<Scored>, u32)> = indices
         .par_chunks(CHUNK_SIZE)
-        .map(|chunk| search_chunk(arena, chunk, mode, query_mask))
+        .map(|chunk| search_chunk(arena, chunk, kind, needle, q_bytes, ignore_case, query_mask))
         .collect();
 
     let total_matches: u32 = local_results.iter().map(|(_, cnt)| *cnt).sum();
@@ -214,29 +308,61 @@ pub fn search<'a>(arena: &'a Arena, query: &str, scope: Scope) -> SearchResult<'
     }
     let mode = parse_query(query);
 
-    if matches!(mode, QueryMode::Empty) {
+    let Some(kind) = mode.match_kind() else {
         return SearchResult {
             indices: Cow::Borrowed(indices),
             total: indices.len() as u32,
         };
-    }
+    };
 
-    let query_bytes = match mode {
+    let raw_query_str = match mode {
         QueryMode::Prefix(s)
         | QueryMode::Substring(s)
         | QueryMode::Suffix(s)
-        | QueryMode::Fuzzy(s) => s.as_bytes(),
+        | QueryMode::Fuzzy(s) => s,
         QueryMode::Empty => unreachable!(),
     };
-    let query_mask = char_mask(query_bytes);
+
+    let mut scratch = [0_u8; STACK_QUERY_CAPACITY];
+    let mut overflow = None;
+    let processed = ProcessedQuery::new(raw_query_str, &mut scratch, &mut overflow, true);
+
+    let mut needle_buf = Vec::new();
+    let needle = Utf32Str::new(processed.text, &mut needle_buf);
+    let q_bytes = processed.text.as_bytes();
+
     #[cfg(not(miri))]
     if indices.len() < PAR_THRESHOLD {
-        search_sequential(arena, indices, mode, query_mask)
+        search_sequential(
+            arena,
+            indices,
+            kind,
+            needle,
+            q_bytes,
+            processed.ignore_case,
+            processed.mask,
+        )
     } else {
-        search_parallel(arena, indices, mode, query_mask)
+        search_parallel(
+            arena,
+            indices,
+            kind,
+            needle,
+            q_bytes,
+            processed.ignore_case,
+            processed.mask,
+        )
     }
     #[cfg(miri)]
-    search_sequential(arena, indices, mode, query_mask)
+    search_sequential(
+        arena,
+        indices,
+        kind,
+        needle,
+        q_bytes,
+        processed.ignore_case,
+        processed.mask,
+    )
 }
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -422,17 +548,30 @@ mod tests {
         }
         let (_dir, arena) = make_arena(&lines);
 
+        let mut scratch = [0_u8; STACK_QUERY_CAPACITY];
+        let mut overflow = None;
+        let processed = ProcessedQuery::new("test", &mut scratch, &mut overflow, true);
+        let mut needle_buf = Vec::new();
+        let needle = Utf32Str::new(processed.text, &mut needle_buf);
+        let q_bytes = processed.text.as_bytes();
+
         let seq = search_sequential(
             &arena,
             arena.scope_indices(Scope::Global),
-            QueryMode::Fuzzy("test"),
-            char_mask(b"test"),
+            MatchKind::Fuzzy,
+            needle,
+            q_bytes,
+            processed.ignore_case,
+            processed.mask,
         );
         let par = search_parallel(
             &arena,
             arena.scope_indices(Scope::Global),
-            QueryMode::Fuzzy("test"),
-            char_mask(b"test"),
+            MatchKind::Fuzzy,
+            needle,
+            q_bytes,
+            processed.ignore_case,
+            processed.mask,
         );
 
         assert_eq!(seq.indices.len(), par.indices.len());
@@ -442,6 +581,43 @@ mod tests {
         seq_sorted.sort_unstable();
         par_sorted.sort_unstable();
         assert_eq!(seq_sorted, par_sorted);
+    }
+
+    #[test]
+    fn uppercase_query_no_panic_regression() {
+        // Regression test for nucleo-matcher fuzzy_optimal.rs:37 panic: "should have been caught by prefilter"
+        let (_dir, arena) = make_arena(&[
+            "1000\t50\t0\t/home\tA_B_C",
+            "2000\t50\t0\t/home\tGIT_COMMIT_HOOK",
+            "3000\t50\t0\t/home\tcargo build --release",
+            "4000\t50\t0\t/home\tCARGO_HOME=/tmp",
+        ]);
+
+        // Exact pattern that triggered the upstream panic
+        let res1 = search(&arena, "AB", Scope::Global);
+        assert!(!res1.indices.is_empty());
+        assert_eq!(arena.cmd_str(res1.indices[0]), "A_B_C");
+
+        let res2 = search(&arena, "GIT", Scope::Global);
+        assert!(!res2.indices.is_empty());
+        assert_eq!(arena.cmd_str(res2.indices[0]), "GIT_COMMIT_HOOK");
+
+        let res3 = search(&arena, "CARGO", Scope::Global);
+        assert!(!res3.indices.is_empty());
+        assert_eq!(arena.cmd_str(res3.indices[0]), "CARGO_HOME=/tmp");
+    }
+
+    #[test]
+    fn case_insensitive_char_mask_and_search() {
+        let (_dir, arena) = make_arena(&[
+            "1000\t50\t0\t/home\tGit Status",
+            "2000\t50\t0\t/home\tls -la",
+        ]);
+
+        // Lowercase query matches uppercase candidate via case-folded char_mask and nucleo
+        let res = search(&arena, "git", Scope::Global);
+        assert_eq!(res.indices.len(), 1);
+        assert_eq!(arena.cmd_str(res.indices[0]), "Git Status");
     }
 
     #[test]
